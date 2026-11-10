@@ -165,6 +165,9 @@ async function hold(at: { x: number; y: number }, until: () => Promise<boolean>,
 }
 
 let idle = 0;
+const TRACE = !!flag('trace');
+let lastPhase = '';
+const fmt = (sec: number) => `${Math.floor(sec / 60)}:${String(Math.floor(sec % 60)).padStart(2, '0')}`;
 let dailyStarted = false;
 /** time the player spends on purpose (reading a readout, looking through the parts): not a wait */
 let selfT = 0;
@@ -362,6 +365,8 @@ while (gameT < deadline && !ended) {
     idle++;
     const ph = await page.evaluate(() => String(window.__game?.play.phase ?? ''));
     if (waitPhases[waitPhases.length - 1] !== ph) waitPhases.push(ph);
+    if (TRACE && ph !== lastPhase) console.log(`[trace ${fmt(gameT)}] job ${job} ${ph}`);
+    lastPhase = ph;
     await tick();
     if (idle > 40 * FPS) {
       note('stuck', 'nothing on screen tells what to do for 40 s');
@@ -380,6 +385,6 @@ console.log(`played ${job - (START || 1) + 1} job(s) in ${gameT.toFixed(0)} s ga
 if (VIDEO) {
   const n = readdirSync(frames).length;
   const out = flag('out')?.split('=')[1] ?? join(outDir, 'video.mp4');
-  execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(FPS), '-i', join(frames, 'f%06d.jpg'), '-vf', `fps=30,scale=${W}:${H}:flags=lanczos`, '-c:v', 'libx264', '-preset', 'medium', '-crf', '24', '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-an', out]);
+  execFileSync('ffmpeg', ['-y', '-loglevel', 'error', '-framerate', String(FPS), '-i', join(frames, 'f%06d.jpg'), '-vf', `scale=${W}:${H}:flags=lanczos`, '-c:v', 'libx264', '-preset', 'slow', '-tune', 'animation', '-crf', W >= 1280 ? '35' : '28', '-r', String(FPS), '-pix_fmt', 'yuv420p', '-movflags', '+faststart', '-an', out]);
   console.log(`wrote ${out} (${n} frames, ${(n / FPS).toFixed(0)} s)`);
 }
