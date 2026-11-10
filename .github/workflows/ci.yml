@@ -34,6 +34,19 @@ jobs:
           ! grep -rqi "sdk.crazygames.com" dist-gd dist-web dist-gamepix
           ! grep -rqi "gamedistribution.com" dist dist-web dist-gamepix
           ! grep -rqi "gamepix.sdk.js" dist dist-web dist-gd
+      - name: GamePix bundle declares the legacy sound handlers and reads GamePix.lang()
+        run: |
+          check() { # $1 = label, $2 = file with the bundle's JS
+            for re in 'GamePix\.soundOff\s*=[^=]' 'GamePix\.soundOn\s*=[^=]' 'GamePix\.lang\(\)'; do
+              grep -qE "$re" "$2" || { echo "::error::$1 has no match for $re"; exit 1; }
+            done
+            echo "ok $1"
+          }
+          cat dist-gamepix/assets/*.js > "$RUNNER_TEMP/gpx-dist.js"
+          check dist-gamepix "$RUNNER_TEMP/gpx-dist.js"
+          zip=$(ls submission-gamepix/*-gamepix-v*.zip | sort -V | tail -1)
+          unzip -p "$zip" 'assets/*.js' > "$RUNNER_TEMP/gpx-zip.js"
+          check "$zip" "$RUNNER_TEMP/gpx-zip.js"
       - name: Build size budget (< 8 MB each)
         run: for d in dist dist-web dist-gd dist-gamepix; do node scripts/check-size.mjs $d; done
       - name: Submission zips (index.html at the root, store text limits)

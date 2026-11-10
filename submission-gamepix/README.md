@@ -1,11 +1,12 @@
 # Fix It Garage — GamePix submission
 
-- **Build:** `fix-it-garage-gamepix-v1.0.0.zip` (`npm run build:gamepix`): `index.html` at the root, relative paths only.
+- **Build:** `fix-it-garage-gamepix-v1.0.1.zip` (`npm run build:gamepix`): `index.html` at the root, relative paths only.
   `window.GamePixConfig = { lifecycle: 'manual' }` and the GamePix SDK v3 script come first in `<head>`, before the game.
   Lifecycle: loading(0-100) during boot, `loaded()` before the menu, `gameStart()` at the first job. The SDK's
-  `pause`/`resume` events pause the game and its audio, `soundOff`/`soundOn` silence it. Interstitials only between
+  `pause`/`resume` events pause the game and its audio, `soundOff`/`soundOn` silence it (the same handlers are also
+  assigned as the legacy `GamePix.pause`/`resume`/`soundOff`/`soundOn` before `loaded()`). Interstitials only between
   jobs (at most one per 2 minutes), rewarded ads only from player taps, reward only on `success: true`.
-  Language from `GamePix.lang()`.
+  Language from `GamePix.lang()` (read once at boot), unless the player picked one in Settings. Older zips are kept for reference.
 - **Icon / cover:** `icon-256x256.jpg`, `cover-1360x850.jpg` (rendered from the real 3D title scene).
 
 ## Name
