@@ -113,13 +113,28 @@ export function rankSuspects(ctx: SuspectCtx): Suspect[] {
   return out.sort((a, b) => b.score - a.score || b.matched.length - a.matched.length || order(a.part) - order(b.part));
 }
 
+/**
+ * How many suspects at the top clearly lead (each gets a "best match" badge): with `left` faults still to find (the
+ * ticket says "two problems"), the top `left` suspects lead when they all score above the next one (no clues: all tie). 0 = none.
+ */
+export function clearLeaders(list: Suspect[], left = 1) {
+  // a scratch the customer showed always leads; then the faults to deduce
+  const declared = list.filter((s) => s.declared).length;
+  const rest = list.slice(declared);
+  if (left < 1) return declared;
+  const k = Math.min(left, rest.length);
+  const next = rest[k];
+  if (next && rest.slice(0, k).some((s) => s.score <= next.score)) return declared;
+  return declared + k;
+}
+
 /** the top suspect clearly leads (a "best match" badge) */
 export function clearLeader(list: Suspect[]) {
-  const [a, b] = list;
-  if (!a) return false;
-  if (a.declared) return true;
-  return a.matched.length > 0 && (!b || a.score > b.score);
+  return clearLeaders(list, 1) > 0;
 }
+
+/** faults still to find (not counting a declared scratch) */
+export const faultsLeft = (faults: FaultId[], fixed: FaultId[]) => faults.filter((f) => !FAULTS[f].declared && !fixed.includes(f)).length;
 
 /** at least one tool has been used */
 export const hasClues = (clues: Iterable<Clue>) => [...clues].some((c) => c.verdict !== 'na');

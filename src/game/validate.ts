@@ -5,7 +5,7 @@
  */
 import { BASE_TOOLS, CAREER, CARS, CAR_TYPES, FAULTS, PARTS, UPGRADES, type CarType, type FaultId, type ToolId } from './data';
 import { bestDiagnosis, INFERABLE, lookalikes, toolFindings, toolWorks } from './rules';
-import { FEW_SUSPECTS, nextHint, rankSuspects, type Clue } from './diagnosis';
+import { clearLeaders, FEW_SUSPECTS, nextHint, rankSuspects, type Clue } from './diagnosis';
 import { careerJob, dailyJob, optimalMinutes, type JobDef } from './jobs';
 
 export interface Row {
@@ -43,6 +43,11 @@ export function checkRelaxed(j: JobDef, issues: string[]) {
   for (const [what, tools] of sets) {
     const t3 = top([], tools.map((t) => clueOf(t, j.faults, j.car)));
     for (const f of j.faults) if (!t3.includes(FAULTS[f].part)) issues.push(`${name}: relaxed suspects after the ${what} miss ${FAULTS[f].part} (top 3: ${t3.join(', ')})`);
+    // once the clues identify the faults, exactly the true parts carry the "best match" badge
+    const list = rankSuspects({ car: j.car, faults: j.faults, fixed: [], clues: tools.map((t) => clueOf(t, j.faults, j.car)) });
+    const n = clearLeaders(list, j.faults.filter((f) => !FAULTS[f].declared).length);
+    const want = j.faults.map((f) => FAULTS[f].part).sort().join();
+    if (list.slice(0, n).map((s) => s.part).sort().join() !== want) issues.push(`${name}: after the ${what}, the "best match" badges (${list.slice(0, n).map((s) => s.part).join(', ') || 'none'}) are not the true parts`);
     for (const fixed of j.faults) {
       if (j.faults.length < 2) break;
       const left = j.faults.filter((f) => f !== fixed);
@@ -177,7 +182,7 @@ export function reportMarkdown(r: Report) {
   for (const i of r.issues) out.push(`- ${i}`);
   if (r.issues.length) out.push('');
   out.push(`Also checked: ${r.checked.endless} endless jobs (41-140) and ${r.checked.daily} daily jobs (120 days × 3 progress levels).`);
-  out.push(`Relaxed mode (${r.checked.relaxed} jobs): the suspects list puts every true fault in the top ${FEW_SUSPECTS} after the fastest diagnosis, after all base tools, and after one of two faults is fixed (old or fresh clues); following only the guided hints solves every job.`);
+  out.push(`Relaxed mode (${r.checked.relaxed} jobs): the suspects list puts every true fault in the top ${FEW_SUSPECTS} (and exactly the true parts carry the "best match" badge) after the fastest diagnosis, after all base tools, and after one of two faults is fixed (old or fresh clues); following only the guided hints solves every job.`);
   out.push('Variety: no two identical jobs in a row (career and endless), and consecutive career jobs always change the car type, and in jobs 1-10 neighbours never repeat the same repair action.', '');
   out.push('## Career (40 jobs)', '');
   out.push('| # | Car | Fault(s) | Tricky | Fastest diagnosis | Fastest solve | Target | Labour | Time bonus | Running total |');

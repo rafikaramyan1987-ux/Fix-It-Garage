@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { BASE_TOOLS, type FaultId, type ToolId } from '../../src/game/data';
-import { clearLeader, findingTone, gentleJob, nextHint, rankSuspects, readingTone, whyWrong, type Clue } from '../../src/game/diagnosis';
+import { clearLeader, clearLeaders, findingTone, gentleJob, nextHint, rankSuspects, readingTone, whyWrong, type Clue } from '../../src/game/diagnosis';
 import { Job } from '../../src/game/job';
 import { careerJob, withDifficulty } from '../../src/game/jobs';
 import { loadSave, newSave } from '../../src/game/progress';
@@ -33,6 +33,13 @@ describe('suspects list', () => {
   it('clicking with a healthy battery points to the starter', () => {
     const list = rankSuspects({ car: 'pickup', faults: ['starter'], fixed: [], clues: [clue('tester', ['starter']), clue('listen', ['starter'])] });
     expect(list[0].part).toBe('starter');
+  });
+  it('two problems: both true parts carry the best-match badge once the clues tell them apart', () => {
+    const faults: FaultId[] = ['alternator', 'flat-tyre'];
+    const clues = (['tester', 'listen', 'lift', 'drive'] as ToolId[]).map((t) => clue(t, faults, 'pickup' as 'sedan'));
+    const list = rankSuspects({ car: 'pickup', faults, fixed: [], clues });
+    expect(list.slice(0, clearLeaders(list, 2)).map((s) => s.part).sort()).toEqual(['alternator', 'tyre']);
+    expect(clearLeaders(rankSuspects({ car: 'pickup', faults, fixed: [], clues: [] }), 2)).toBe(0);
   });
   it('a scratch the customer showed is always on top', () => {
     const list = rankSuspects({ car: 'sedan', faults: ['brake-pads', 'scratch'], fixed: [], clues: [] });

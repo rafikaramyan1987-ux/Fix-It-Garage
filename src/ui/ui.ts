@@ -521,10 +521,10 @@ export class UI {
         const items = all || v.limit === null ? v.items : v.items.slice(0, v.limit);
         if (!v.clues && !all) grid.append(el('div', 'noclues', esc(t('parts.noClues'))));
         else
-          items.forEach((it, i) => {
+          items.forEach((it) => {
             const why = it.reason ? `<span class="why fit">${esc(it.reason)}</span>` : '';
-            const badge = i === 0 && it.best ? `<span class="best">${esc(t('suspect.best'))}</span>` : '';
-            const b = el('button', `part${sel === it.part ? ' sel' : ''}${i === 0 && it.best ? ' top' : ''}`, `<span class="ic">${icons[it.part]}</span><span class="pt"><span class="nm fit">${esc(t(`part.${it.part}`))}</span>${why}</span><span class="side"><span class="pr">$${PARTS[it.part].price}</span>${badge}</span>`);
+            const badge = it.best ? `<span class="best">${esc(t('suspect.best'))}</span>` : '';
+            const b = el('button', `part${sel === it.part ? ' sel' : ''}${it.best ? ' top' : ''}`, `<span class="ic">${icons[it.part]}</span><span class="pt"><span class="nm fit">${esc(t(`part.${it.part}`))}</span>${why}</span><span class="side"><span class="pr">$${PARTS[it.part].price}</span>${badge}</span>`);
             b.dataset.part = it.part;
             b.addEventListener('click', () => pick(it.part));
             grid.append(b);

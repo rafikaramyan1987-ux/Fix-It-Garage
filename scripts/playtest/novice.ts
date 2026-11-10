@@ -225,8 +225,10 @@ async function playJob(n: number) {
         await tick(0.3);
         continue;
       }
-      await tap('.toolbar [data-tool=repair]');
-      await tick(0.3);
+      // every tool used and still unsure: ask for another hint
+      log(`job ${n}: asks for another hint`);
+      await tap('.toolbar [data-tool=hint]');
+      await tick(0.4);
       continue;
     }
     await tick();

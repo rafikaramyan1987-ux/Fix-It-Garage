@@ -11,7 +11,7 @@ import { CARS, CAR_TYPES, FAULTS, PARTS, TOOLS, TOOL_IDS, UPGRADES, type CarType
 import { Job } from '../game/job';
 import { CAREER_LENGTH, careerJob, dailyJob, todayKey, withDifficulty, type JobDef } from '../game/jobs';
 import { buyUpgrade, dailyDone, difficultyOf, finishJob, garageCtx, loadSave, newSave, owns, writeSave, type SaveData } from '../game/progress';
-import { clearLeader, FEW_SUSPECTS, gentleJob, hasClues, HINT_PRICE, nextHint, rankSuspects, type Hint, type Suspect } from '../game/diagnosis';
+import { clearLeaders, faultsLeft, FEW_SUSPECTS, gentleJob, hasClues, HINT_PRICE, nextHint, rankSuspects, type Hint, type Suspect } from '../game/diagnosis';
 import { getLang, pickLang, setLang, t, type Lang } from '../i18n';
 import { Car } from '../render/cars';
 import { fadePosts } from '../render/garage';
@@ -640,10 +640,10 @@ export class Play {
     if (this.difficulty !== 'relaxed') return undefined;
     const j = this.job;
     const list = rankSuspects({ car: j.def.car, faults: j.faults, fixed: [...j.fixed], clues: j.clues.values() });
-    const lead = clearLeader(list);
+    const lead = clearLeaders(list, faultsLeft(j.faults, [...j.fixed]));
     const reason = (s: Suspect) => (s.declared ? t('suspect.scratch') : s.matched.length ? t('suspect.matches', { clues: s.matched.slice(0, 3).map((f) => t(`clue.${f}`)).join(' + ') }) : null);
     return {
-      items: list.map((s, i) => ({ part: s.part, best: i === 0 && lead, reason: i < FEW_SUSPECTS ? reason(s) : null })),
+      items: list.map((s, i) => ({ part: s.part, best: i < lead, reason: i < FEW_SUSPECTS ? reason(s) : null })),
       limit: gentleJob(j.def.n) ? FEW_SUSPECTS : null,
       clues: hasClues(j.clues.values()) || !!list[0]?.declared,
     };
