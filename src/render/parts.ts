@@ -105,7 +105,13 @@ export function buildPart(id: PartId, fresh: boolean): THREE.Group {
       const hub = cyl(0.07, 0.07, 0.05, dark(fresh), 16);
       hub.rotation.z = Math.PI / 2;
       g.add(d, hub);
-      if (!fresh) for (let i = 0; i < 4; i++) g.add(at(cyl(0.12 + i * 0.012, 0.12 + i * 0.012, 0.027, rust, 28), 0, 0, 0)), ((g.children[g.children.length - 1] as THREE.Mesh).rotation.z = Math.PI / 2), ((g.children[g.children.length - 1] as THREE.Mesh).scale.set(1, 1, 1));
+      if (!fresh) {
+        // rust rings on a worn disc
+        const ring = new THREE.Mesh(new THREE.TorusGeometry(0.13, 0.012, 6, 28), rust);
+        ring.rotation.y = Math.PI / 2;
+        ring.position.x = 0.014;
+        g.add(ring);
+      }
       break;
     }
     case 'tyre': {
@@ -128,7 +134,7 @@ export function buildPart(id: PartId, fresh: boolean): THREE.Group {
     case 'shock': {
       g.add(cyl(0.035, 0.035, 0.22, mat(fresh ? '#f7c531' : '#6e6a5e', 0.45, 0.2), 14));
       g.add(at(cyl(0.015, 0.015, 0.16, steel(fresh), 10), 0, 0.17, 0));
-      g.add(at(new THREE.TorusGeometry ? new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.012, 6, 16), mat('#d6453b', 0.5)) : new THREE.Group(), 0, 0.12, 0));
+      g.add(at(new THREE.Mesh(new THREE.TorusGeometry(0.06, 0.012, 6, 16), mat('#d6453b', 0.5)), 0, 0.12, 0));
       (g.children[2] as THREE.Mesh).rotation.x = Math.PI / 2;
       if (!fresh) g.add(at(new THREE.Mesh(new THREE.SphereGeometry(0.02, 8, 6), mat('#4a3420', 0.3)), 0.03, -0.05, 0));
       break;

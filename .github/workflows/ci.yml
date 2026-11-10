@@ -19,19 +19,27 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
+      - name: Job validator (every job solvable, clues identify the faults, rewards fit the curve; writes docs/jobs-report.md)
+        run: npm run validate:jobs
+      - name: Translations (every language file has all keys of en.json)
+        run: npm run check:i18n
       - name: Builds (crazygames, web, gd, gamepix)
         run: |
           npm run build
           npm run build:web
           npm run build:gd
           npm run build:gamepix
-      - name: No CrazyGames code outside its build
+      - name: Each portal's SDK only in its own build
         run: |
           ! grep -rqi "sdk.crazygames.com" dist-gd dist-web dist-gamepix
           ! grep -rqi "gamedistribution.com" dist dist-web dist-gamepix
+          ! grep -rqi "gamepix.sdk.js" dist dist-web dist-gd
       - name: Build size budget (< 8 MB each)
+        run: for d in dist dist-web dist-gd dist-gamepix; do node scripts/check-size.mjs $d; done
+      - name: Submission zips (index.html at the root, store text limits)
         run: |
-          for d in dist dist-web dist-gd dist-gamepix; do node scripts/check-size.mjs $d; done
+          npm run submission
+          npm run submission:check
 
   e2e:
     runs-on: ubuntu-latest
@@ -45,4 +53,5 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npm run build:web
+      - run: npm run build:gamepix
       - run: npm run test:e2e

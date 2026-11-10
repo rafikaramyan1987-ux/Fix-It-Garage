@@ -9,7 +9,7 @@ import c600 from '@fontsource/nunito/files/nunito-cyrillic-600-normal.woff2?url'
 import c800 from '@fontsource/nunito/files/nunito-cyrillic-800-normal.woff2?url';
 import { clock } from './app/clock';
 import { sdk } from './app/sdk';
-import { getLang, onLang, setLang, type Lang } from './i18n';
+import { onLang, setLang, type Lang } from './i18n';
 import { Play } from './play/play';
 import { loadCars } from './render/cars';
 import { Stage } from './render/stage';
@@ -109,6 +109,7 @@ async function boot() {
       setLang(l);
     },
   };
+  if (params.get('view') === 'cover') document.getElementById('ui')!.classList.add('cover-mode');
   void play.start(params.has('job') ? Number(params.get('job')) : null);
   tick(0);
   progress(1);
@@ -117,7 +118,6 @@ async function boot() {
   if (capture) bootEl.remove();
   else setTimeout(() => bootEl.remove(), 400);
   window.__ready = true;
-  void getLang;
   if (capture) return;
   let last = performance.now();
   const loop = (now: number) => {

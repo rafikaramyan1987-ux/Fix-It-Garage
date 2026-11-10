@@ -1,10 +1,9 @@
 name: Deploy to GitHub Pages
 
 # The web build (no portal SDK) is published to GitHub Pages from main.
-# Phase A: the preview branch is published too, so the look and feel can be tried before merging.
 on:
   push:
-    branches: [main, 'claude/**']
+    branches: [main]
   workflow_dispatch:
 
 permissions:

@@ -7,7 +7,7 @@ import { sfx, setMusic, setMuted, setSfx, unlockAudio } from '../app/audio';
 import { clock, ease, lerp } from '../app/clock';
 import { Input } from '../app/input';
 import { sdk } from '../app/sdk';
-import { BASE_TOOLS, CARS, CAR_TYPES, FAULTS, PARTS, TOOLS, TOOL_IDS, UPGRADES, type CarType, type FaultId, type PartId, type ToolId, type UpgradeId } from '../game/data';
+import { BASE_TOOLS, CARS, CAR_TYPES, FAULTS, TOOLS, TOOL_IDS, UPGRADES, type CarType, type ToolId, type UpgradeId } from '../game/data';
 import { Job } from '../game/job';
 import { CAREER_LENGTH, careerJob, dailyJob, todayKey, type JobDef } from '../game/jobs';
 import { buyUpgrade, dailyDone, finishJob, garageCtx, loadSave, newSave, owns, writeSave, type SaveData } from '../game/progress';
@@ -57,6 +57,7 @@ export class Play {
     this.repairs = new Repairs(this);
     this.save = loadSave(sdk.data());
     this.applySound();
+    setMuted(sdk.muted);
     sdk.onMute = (m) => setMuted(m);
     ui.onPause = () => void this.pause();
     ui.setMoney(this.save.money);
@@ -314,10 +315,9 @@ export class Play {
       if (!ok) return false;
       this.adNoticeShown = true;
     }
-    const wasPlaying = !this.paused;
     const ok = await sdk.rewarded();
+    // "No ad available right now, try later" for 2.5 s when the ad did not complete (no fill, error, 8 s timeout)
     if (!ok) this.ui.toast(t('toast.noAd'), 'info', 2.5);
-    void wasPlaying;
     return ok;
   }
 
@@ -460,7 +460,6 @@ export class Play {
   async useTool(tool: ToolId, free: boolean) {
     this.phase = `tool:${tool}`;
     const j = this.job;
-    const already = j.clues.has(tool);
     const r = j.useTool(tool, free);
     this.ui.compactTicket(true);
     const sh = this.shots();
@@ -489,20 +488,30 @@ export class Play {
     } else if (tool === 'gauge') {
       await this.stage.rig.go(sh.wheel, 0.8);
       this.ui.prompt(t('prompt.gauge'));
+      const g = this.stage.garage.upgrades.gauge.clone();
+      g.visible = true;
+      const w = this.car.wheel;
+      g.position.copy(this.car.world(w.outerX + 0.05, w.center.y - 0.16, w.center.z + 0.08));
+      this.stage.scene.add(g);
       for (let i = 0; i < 4; i++) {
         sfx.lift();
+        g.rotation.z = Math.sin(i) * 0.2;
         await clock.wait(0.3);
       }
+      g.removeFromParent();
     } else if (tool === 'exhaust') {
       await this.stage.rig.go(sh.rear, 0.8);
       this.ui.prompt(t('prompt.exhaust'));
+      const probe = new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3([V(0, 0, 0), V(0.25, 0.1, -0.3), V(0.6, 0.05, -0.5)]), 12, 0.018, 6), new THREE.MeshStandardMaterial({ color: '#2a2f3a', roughness: 0.7 }));
+      if (!na) probe.position.copy(this.car.tailpipe());
+      this.stage.scene.add(probe);
       if (!na) await this.crank(this.job.remaining.some((f) => FAULTS[f].noStart) ? 'click' : 'run', 1.4);
       else await clock.wait(0.6);
+      probe.removeFromParent();
     }
     this.ui.prompt(null);
     sfx[r.verdict === 'bad' ? 'bad' : 'good']();
     await this.ui.readout(tool, r, j.def.car);
-    if (!already || r.verdict !== j.clues.get(tool)?.verdict) this.ui.setClue(r, j.def.car);
     this.ui.setClue(r, j.def.car);
     this.setClock();
     if (tool === 'tester') await this.testerDone();
@@ -593,8 +602,6 @@ export class Play {
     tst.group.visible = true;
     sfx.pop();
     const reading = this.job.reading('tester');
-    const bat = this.bay.slots.battery ? null : this.bay.oldBattery;
-    void bat;
     for (const [i, term, key] of [
       [0, 'pos', 'prompt.testerPos'],
       [1, 'neg', 'prompt.testerNeg'],
@@ -725,7 +732,7 @@ export class Play {
     const mid = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
     this.ui.coins(mid.x, mid.y, 10);
     for (let i = 0; i < 6; i++) sfx.coin(i * 0.08);
-    await this.ui.countMoney(this.ui.money + total - this.partsSpentRefund(), 0.9);
+    await this.ui.countMoney(this.ui.money + total, 0.9);
     const ach = finishJob(this.save, j.def, p, total, j.wrong.length, todayKey());
     this.save.money = this.ui.money;
     this.persist();
@@ -735,16 +742,4 @@ export class Play {
     return choice === 'menu' ? 'menu' : 'next';
   }
 
-  /** money already shown on the HUD includes the parts bought: nothing to correct */
-  private partsSpentRefund() {
-    return 0;
-  }
-
-  /** part names for the parts sheet tests */
-  static partName(p: PartId) {
-    return t(`part.${p}`);
-  }
 }
-
-export { PARTS };
-export type { FaultId };

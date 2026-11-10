@@ -4,7 +4,7 @@
  */
 import type { Page } from 'playwright';
 
-type ToolId = 'tester' | 'obd' | 'listen' | 'lift';
+type ToolId = 'tester' | 'obd' | 'listen' | 'lift' | 'drive' | 'gauge' | 'exhaust';
 
 declare global {
   interface Window {

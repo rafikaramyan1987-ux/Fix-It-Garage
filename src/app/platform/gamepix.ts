@@ -26,7 +26,7 @@ export interface GamePixAdResult {
 }
 export interface GamePixSdk {
   lifecycle: { loading(p: number): void; loaded(): Promise<unknown>; gameStart(): void };
-  events: { on(name: 'pause' | 'resume', fn: () => void): void };
+  events: { on(name: 'pause' | 'resume' | 'soundOff' | 'soundOn', fn: () => void): void };
   ads: { interstitial(): Promise<GamePixAdResult>; reward(): Promise<GamePixAdResult> };
   lang?(): string;
   happyMoment?(name: string): void;
@@ -60,6 +60,7 @@ export class GamePixPlatform implements Platform {
   private pausedBy = new Set<PauseReason>();
   private paused = false;
   private pending: Pending | null = null;
+  private portalMuted = false;
   muted = false;
   onMute: (m: boolean) => void = () => {};
   onAdPause: (paused: boolean) => void = () => {};
@@ -74,6 +75,15 @@ export class GamePixPlatform implements Platform {
           this.setPaused('sdk', true);
         });
         s.events.on('resume', () => this.onResume());
+        // the portal's own sound switch: silence the game (music + effects) until it is switched back on
+        s.events.on('soundOff', () => {
+          this.portalMuted = true;
+          this.onMute(true);
+        });
+        s.events.on('soundOn', () => {
+          this.portalMuted = false;
+          this.onMute(this.paused);
+        });
       } catch {
         /* no events: play on */
       }
@@ -106,8 +116,8 @@ export class GamePixPlatform implements Platform {
     const p = this.pausedBy.size > 0;
     if (p === this.paused) return;
     this.paused = p;
-    this.muted = p;
-    this.onMute(p);
+    this.muted = p || this.portalMuted;
+    this.onMute(this.muted);
     this.onAdPause(p);
   }
 
