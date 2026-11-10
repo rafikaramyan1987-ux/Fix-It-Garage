@@ -1,7 +1,7 @@
 {
   "name": "fix-it-garage",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
   "description": "Fix It Garage - a cozy 3D car repair workshop game for the web",
   "scripts": {
@@ -16,12 +16,19 @@
     "test": "vitest run",
     "test:e2e": "playwright test --trace off",
     "assets": "node scripts/assets.mjs",
-    "shots": "tsx scripts/preview-shots.ts",
-    "video": "tsx scripts/preview-video.ts"
+    "validate:jobs": "tsx scripts/validate-jobs.ts",
+    "check:i18n": "node scripts/check-i18n.mjs",
+    "submission": "node scripts/submission/build.mjs",
+    "submission:check": "node scripts/submission/check.mjs",
+    "covers": "tsx scripts/submission/covers.ts",
+    "trailer": "tsx scripts/submission/trailer.ts",
+    "preview:shots": "tsx scripts/preview-shots.ts",
+    "preview:video": "tsx scripts/preview-video.ts"
   },
   "license": "UNLICENSED",
   "dependencies": {
     "@fontsource/fredoka": "^5.3.0",
+    "@fontsource/nunito": "^5.3.0",
     "three": "0.170.0"
   },
   "devDependencies": {

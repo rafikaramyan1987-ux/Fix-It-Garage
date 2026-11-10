@@ -9,7 +9,12 @@ import type { Stage } from '../render/stage';
 export interface Target {
   id: string;
   obj: THREE.Object3D;
-  mode: 'tap' | 'hold' | 'lift';
+  mode: 'tap' | 'hold' | 'lift' | 'rub';
+  /** rub: pointer travel (px) needed */
+  rub?: number;
+  /** rub: travel already done in earlier strokes */
+  done?: number;
+  onRub?: (k: number) => void;
   /** seconds to hold */
   hold?: number;
   /** called on press: return false to refuse (wrong order etc.) */
@@ -24,8 +29,12 @@ export interface Target {
 export class Input {
   private targets: Target[] = [];
   private resolve: ((id: string) => void) | null = null;
-  private active: { t: Target; x0: number; y0: number; t0: number; k: number; stop?: () => void } | null = null;
+  private active: { t: Target; x0: number; y0: number; t0: number; k: number; lx: number; ly: number; dist: number; stop?: () => void } | null = null;
   enabled = true;
+  /** a tap that hit nothing while targets were waiting (feedback) / a tap that hit a target */
+  onMiss: (x: number, y: number) => void = () => {};
+  onHit: (x: number, y: number) => void = () => {};
+  private keyRub: (() => void) | null = null;
   /** last pointer position (for the hold ring) */
   x = 0;
   y = 0;
@@ -72,9 +81,18 @@ export class Input {
     if (!this.enabled || !this.targets.length || this.active) return;
     const hit = this.stage.pickNear(e.clientX, e.clientY, this.targets.map((t) => t.obj));
     const t = this.targets.find((x) => x.obj === hit);
-    if (!t) return;
+    if (!t) {
+      this.onMiss(e.clientX, e.clientY);
+      return;
+    }
+    this.onHit(e.clientX, e.clientY);
+    this.start(t, e.clientX, e.clientY);
+  }
+
+  /** begin acting on a target (pointer or keyboard) */
+  private start(t: Target, x: number, y: number) {
     if (t.guard && !t.guard()) return;
-    const a = { t, x0: e.clientX, y0: e.clientY, t0: clock.t, k: 0 } as NonNullable<Input['active']>;
+    const a = { t, x0: x, y0: y, t0: clock.t, k: 0, lx: x, ly: y, dist: t.done ?? 0 } as NonNullable<Input['active']>;
     this.active = a;
     if (t.mode === 'tap') {
       this.finish(t.id);
@@ -91,10 +109,51 @@ export class Input {
     }
   }
 
+  /** keyboard: act on the expected target (Space / Enter). Tap and drag complete at once, hold and rub last while held. */
+  keyDown(expected: string | null) {
+    if (!this.enabled || this.active || !this.targets.length) return false;
+    const t = this.targets.find((x) => x.id === expected) ?? this.targets[0];
+    if (t.mode === 'lift') {
+      if (t.guard && !t.guard()) return true;
+      this.finish(t.id);
+      return true;
+    }
+    this.start(t, 0, 0);
+    const a = this.active as NonNullable<Input['active']> | null;
+    if (a && t.mode === 'rub') {
+      this.keyRub = clock.every((dt) => {
+        a.dist += dt * 900;
+        a.k = Math.min(1, a.dist / (t.rub ?? 600));
+        t.onRub?.(a.k);
+        if (a.k >= 1) {
+          this.keyRub?.();
+          this.keyRub = null;
+          this.finish(t.id);
+        }
+      });
+    }
+    return true;
+  }
+
+  keyUp() {
+    this.keyRub?.();
+    this.keyRub = null;
+    this.up();
+  }
+
   private move(e: PointerEvent) {
     this.x = e.clientX;
     this.y = e.clientY;
     const a = this.active;
+    if (a && a.t.mode === 'rub') {
+      a.dist += Math.hypot(e.clientX - a.lx, e.clientY - a.ly);
+      a.lx = e.clientX;
+      a.ly = e.clientY;
+      a.k = Math.min(1, a.dist / (a.t.rub ?? 600));
+      a.t.onRub?.(a.k);
+      if (a.k >= 1) this.finish(a.t.id);
+      return;
+    }
     if (!a || a.t.mode !== 'lift') return;
     a.k = Math.max(0, Math.min(1, (a.y0 - e.clientY) / 90));
     a.t.onLift?.(a.k);
@@ -107,6 +166,12 @@ export class Input {
       a.stop?.();
       this.active = null;
       a.t.onHoldCancel?.();
+      return;
+    }
+    if (a.t.mode === 'rub') {
+      // progress is kept: the next stroke continues where this one stopped
+      this.active = null;
+      a.t.done = a.dist;
       return;
     }
     if (a.t.mode === 'lift') {

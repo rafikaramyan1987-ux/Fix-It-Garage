@@ -73,7 +73,9 @@ export class Stage {
   resize(w: number, h: number) {
     this.width = w;
     this.height = h;
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    // `?pr=0.5` renders the 3D at a lower pixel ratio (fast offline captures; the DOM UI stays sharp)
+    const pr = Number(new URLSearchParams(location.search).get('pr')) || 2;
+    const dpr = Math.min(window.devicePixelRatio || 1, pr);
     this.renderer.setPixelRatio(dpr);
     this.renderer.setSize(w, h, false);
     this.rig.resize(w, h);

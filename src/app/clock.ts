@@ -59,6 +59,13 @@ class Clock {
     });
   }
 
+  /** drop every pending wait, tween and frame callback without resolving them (abandoning a job) */
+  cancelAll() {
+    this.tasks = [];
+    this.tweens = [];
+    this.frameFns.clear();
+  }
+
   /** run every frame until the returned function is called */
   every(fn: (dt: number, t: number) => void) {
     this.frameFns.add(fn);

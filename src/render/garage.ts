@@ -1,5 +1,6 @@
 /** The garage: room, lighting props, tool bench, parts shelf, two-post lift and decorations. All procedural. */
 import * as THREE from 'three';
+import type { UpgradeId } from '../game/data';
 import { at, blob, box, cyl, group, mat, rbox, shade } from './geom';
 import { brickTexture, floorTexture, labelTexture, outsideTexture, pegboardTexture, posterTexture, wallTexture, woodTexture } from './textures';
 
@@ -10,6 +11,9 @@ export interface Lift {
   /** moves up and down with the car */
   carriage: THREE.Group;
   arms: THREE.Object3D[];
+  /** control box buttons: raise (green) / lower (red) */
+  up: THREE.Object3D;
+  down: THREE.Object3D;
 }
 
 export interface Garage {
@@ -20,6 +24,8 @@ export interface Garage {
   cartTop: THREE.Vector3;
   shelfBattery: THREE.Object3D;
   lamps: THREE.Mesh[];
+  /** the bought upgrades, shown in the garage (hidden until owned) */
+  upgrades: Record<UpgradeId, THREE.Object3D>;
 }
 
 function room(root: THREE.Group) {
@@ -193,7 +199,7 @@ function lift(): Lift {
   g.add(ctrl, btn, btn2);
   g.add(carriage);
   shade(g);
-  return { group: g, carriage, arms };
+  return { group: g, carriage, arms, up: btn, down: btn2 };
 }
 
 function bench(root: THREE.Group) {
@@ -439,7 +445,7 @@ function decor(root: THREE.Group) {
     root.add(p);
   }
   // garage sign above the door
-  const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.6), new THREE.MeshStandardMaterial({ map: labelTexture('FIX IT GARAGE', '#ff7a45', '#ffffff', 512, 128, 'bold 64px Fredoka, sans-serif'), roughness: 0.6 }));
+  const sign = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 0.6), new THREE.MeshStandardMaterial({ map: labelTexture('FIX IT GARAGE', '#ff7a45', '#ffffff', 512, 128, 'bold 64px Fredoka, Nunito, sans-serif'), roughness: 0.6 }));
   at(sign, 0, ROOM.doorH + 0.75, ROOM.z0 + 0.03);
   root.add(sign);
   // clock
@@ -478,7 +484,7 @@ function decor(root: THREE.Group) {
   root.add(at(blob(0.9, 0.9, 0.55), 6.2, 0, -2.4));
   // cones
   for (const [x, z] of [
-    [2.2, -4.0],
+    [1.2, 3.6],
     [-1.9, 3.3],
   ]) {
     const c = group(cyl(0.02, 0.15, 0.42, mat('#ff7a2f', 0.5), 16), at(cyl(0.085, 0.11, 0.08, mat('#ffffff', 0.5), 16), 0, 0.02, 0), at(rbox(0.36, 0.04, 0.36, mat('#ff7a2f', 0.5), 0.015), 0, -0.21, 0));
@@ -538,5 +544,125 @@ export function buildGarage(): Garage {
   const lf = lift();
   root.add(lf.group);
   const c = cart(root);
-  return { root, lift: lf, cart: c.cart, cartTop: c.top, shelfBattery, lamps: lampMeshes };
+  const upgrades = upgradeProps(root);
+  return { root, lift: lf, cart: c.cart, cartTop: c.top, shelfBattery, lamps: lampMeshes, upgrades };
+}
+
+/** what each upgrade looks like in the garage */
+function upgradeProps(root: THREE.Group): Record<UpgradeId, THREE.Object3D> {
+  const add = (o: THREE.Object3D) => {
+    shade(o);
+    o.visible = false;
+    root.add(o);
+    return o;
+  };
+  // second lift in the right bay
+  const l2 = lift().group;
+  l2.position.set(4.45, 0, 0.7);
+  // paint booth, front left
+  const booth = new THREE.Group();
+  const frame = mat('#e9ecef', 0.4, 0.3);
+  for (const [x, z] of [
+    [-1.2, -1],
+    [1.2, -1],
+    [-1.2, 1],
+    [1.2, 1],
+  ])
+    booth.add(at(rbox(0.08, 2.2, 0.08, frame, 0.02), x, 1.1, z));
+  booth.add(at(rbox(2.5, 0.12, 2.1, frame, 0.03), 0, 2.2, 0));
+  const curtain = new THREE.MeshStandardMaterial({ color: '#bfe8ff', transparent: true, opacity: 0.35, roughness: 0.2, side: THREE.DoubleSide, depthWrite: false });
+  const back = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 2.1), curtain);
+  at(back, 0, 1.1, -1);
+  const side = new THREE.Mesh(new THREE.PlaneGeometry(2.0, 2.1), curtain);
+  side.rotation.y = Math.PI / 2;
+  at(side, -1.2, 1.1, 0);
+  booth.add(back, side);
+  booth.add(at(rbox(2.3, 0.04, 1.9, mat('#d9e3ea', 0.5), 0.01), 0, 0.03, 0));
+  const gun = group(rbox(0.06, 0.12, 0.16, mat('#2f6fd6', 0.4), 0.02), at(cyl(0.035, 0.035, 0.08, mat('#cfd5dc', 0.3, 0.6), 10), 0, 0.09, 0));
+  at(gun, 0.9, 1.3, -0.95);
+  booth.add(gun);
+  booth.position.set(-5.3, 0, 2.3);
+  // plants by the door
+  const plants = new THREE.Group();
+  for (const x of [-2.4, 2.4]) {
+    const pot = group(cyl(0.26, 0.2, 0.42, mat('#d9734e', 0.7), 16));
+    for (let i = 0; i < 9; i++) {
+      const l = new THREE.Mesh(new THREE.SphereGeometry(0.2, 10, 8), mat(i % 2 ? '#4caf61' : '#5fc274', 0.7));
+      l.scale.set(0.55, 1.5, 0.35);
+      const a = (i / 9) * Math.PI * 2;
+      l.position.set(Math.cos(a) * 0.12, 0.5 + (i % 3) * 0.1, Math.sin(a) * 0.12);
+      l.rotation.set(Math.sin(a) * 0.5, -a, Math.cos(a) * 0.5);
+      pot.add(l);
+    }
+    at(pot, x, 0.21, ROOM.z0 + 0.45);
+    plants.add(pot, at(blob(0.8, 0.8, 0.5), x, 0, ROOM.z0 + 0.45));
+  }
+  // neon sign: a glowing wrench and heart, no words
+  const neon = new THREE.Group();
+  const glow = (c: string) => new THREE.MeshStandardMaterial({ color: c, emissive: c, emissiveIntensity: 2.4, toneMapped: false });
+  const wrenchCurve = new THREE.CatmullRomCurve3([new THREE.Vector3(-0.5, -0.3, 0), new THREE.Vector3(0.2, 0.25, 0)]);
+  neon.add(new THREE.Mesh(new THREE.TubeGeometry(wrenchCurve, 8, 0.035, 8), glow('#5ef0ff')));
+  neon.add(at(new THREE.Mesh(new THREE.TorusGeometry(0.16, 0.035, 8, 20, Math.PI * 1.5), glow('#5ef0ff')), 0.32, 0.36, 0));
+  const heart = new THREE.Shape();
+  heart.moveTo(0, -0.18);
+  heart.bezierCurveTo(-0.3, 0.02, -0.12, 0.25, 0, 0.1);
+  heart.bezierCurveTo(0.12, 0.25, 0.3, 0.02, 0, -0.18);
+  const hp = heart.getPoints(24).map((p) => new THREE.Vector3(p.x, p.y, 0));
+  neon.add(at(new THREE.Mesh(new THREE.TubeGeometry(new THREE.CatmullRomCurve3(hp, true), 40, 0.03, 6, true), glow('#ff6fae')), 0.85, 0, 0));
+  neon.add(at(rbox(2.0, 0.9, 0.04, mat('#2a2f3a', 0.6), 0.04), 0.2, 0.05, -0.04));
+  neon.position.set(4.3, 3.1, ROOM.z0 + 0.06);
+  const neonLight = new THREE.PointLight('#8ff4ff', 2, 4, 2);
+  neonLight.position.set(4.3, 3.0, ROOM.z0 + 0.6);
+  neon.add(neonLight);
+  // waiting lounge: sofa, coffee table, mug
+  const lounge = new THREE.Group();
+  const sofaM = mat('#7c5cff', 0.85);
+  lounge.add(at(rbox(1.6, 0.28, 0.7, sofaM, 0.08), 0, 0.22, 0));
+  lounge.add(at(rbox(1.6, 0.5, 0.2, sofaM, 0.08), 0, 0.45, -0.28));
+  for (const x of [-0.8, 0.8]) lounge.add(at(rbox(0.18, 0.42, 0.7, sofaM, 0.07), x, 0.3, 0));
+  lounge.add(at(rbox(0.36, 0.08, 0.3, mat('#ffcf33', 0.8), 0.04), -0.4, 0.42, 0.02));
+  lounge.add(at(rbox(0.9, 0.06, 0.5, new THREE.MeshStandardMaterial({ map: woodTexture(), roughness: 0.6 }), 0.02), 0, 0.36, 0.75));
+  for (const [x, z] of [
+    [-0.38, 0.55],
+    [0.38, 0.55],
+    [-0.38, 0.95],
+    [0.38, 0.95],
+  ])
+    lounge.add(at(cyl(0.025, 0.025, 0.33, mat('#2a2f3a', 0.5), 8), x, 0.17, z));
+  lounge.add(at(cyl(0.05, 0.045, 0.1, mat('#ffffff', 0.4), 12), 0.2, 0.44, 0.75));
+  lounge.add(at(blob(2.2, 1.8, 0.5), 0, 0, 0.3));
+  lounge.position.set(5.4, 0, 3.4);
+  lounge.rotation.y = -Math.PI / 2 + 0.3;
+  // tools that show up when bought
+  const gauge = group(cyl(0.05, 0.05, 0.03, mat('#e4473c', 0.4), 16), at(rbox(0.03, 0.12, 0.03, mat('#2a2f3a', 0.5), 0.01), 0.06, 0, 0));
+  (gauge.children[0] as THREE.Mesh).rotation.x = Math.PI / 2;
+  at(gauge, -3.75, 0.68, ROOM.z0 + 0.45);
+  const analyser = group(rbox(0.5, 0.7, 0.4, mat('#2fa39b', 0.45, 0.1), 0.04), at(rbox(0.36, 0.2, 0.02, mat('#16302a', 0.3, 0, { emissive: '#3fd18a', emissiveIntensity: 0.3 }), 0.01), 0, 0.15, 0.21));
+  for (const x of [-0.18, 0.18]) analyser.add(at(cyl(0.05, 0.05, 0.04, mat('#222', 0.8), 10), x, -0.36, 0.12));
+  const hosePath = new THREE.CatmullRomCurve3([new THREE.Vector3(0.2, 0, 0), new THREE.Vector3(0.5, -0.2, 0.2), new THREE.Vector3(0.6, -0.33, 0.5)]);
+  analyser.add(new THREE.Mesh(new THREE.TubeGeometry(hosePath, 10, 0.02, 6), mat('#2a2f3a', 0.7)));
+  at(analyser, -1.9, 0.4, ROOM.z0 + 0.5, 0.2);
+  const wrench = group(rbox(0.1, 0.18, 0.08, mat('#ffcf33', 0.4), 0.03), at(cyl(0.025, 0.025, 0.08, mat('#cfd5dc', 0.3, 0.7), 10), 0, 0.02, 0.07));
+  (wrench.children[1] as THREE.Mesh).rotation.x = Math.PI / 2;
+  at(wrench, -2.9, 1.24, -2.6, 0.4);
+  const parcels = new THREE.Group();
+  for (let i = 0; i < 4; i++) {
+    const p = rbox(0.42 - i * 0.05, 0.25, 0.34, mat(i % 2 ? '#d8a86a' : '#c9965a', 0.85), 0.015);
+    at(p, 0, 0.13 + i * 0.25, 0, i * 0.3);
+    parcels.add(p);
+    parcels.add(at(rbox(0.1, 0.012, 0.1, mat('#22c27a', 0.4), 0.004), 0, 0.26 + i * 0.25, 0.04, i * 0.3));
+  }
+  parcels.add(at(blob(0.8, 0.8, 0.5), 0, 0, 0));
+  parcels.position.set(2.6, 0, ROOM.z0 + 0.6);
+  return {
+    lift2: add(l2),
+    booth: add(booth),
+    plants: add(plants),
+    neon: add(neon),
+    lounge: add(lounge),
+    gauge: add(gauge),
+    exhaust: add(analyser),
+    wrench: add(wrench),
+    delivery: add(parcels),
+  };
 }

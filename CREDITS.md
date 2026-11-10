@@ -4,12 +4,14 @@ Fix It Garage is an original game. No names, logos or art from any existing game
 
 | Asset | Source | Licence |
 | --- | --- | --- |
-| Car models (sedan, hatchback, van) | **Kenney Car Kit 3.1** by Kenney ([kenney.nl](https://www.kenney.nl)), source pack in `assets-src/kenney-car-kit/` (see its `License.txt`). Only the models the game uses are shipped, compressed by `scripts/assets.mjs` into `src/assets/cars/` | CC0 1.0 |
+| Car models (hatchback, sedan, van, pickup, sports car, classic = repainted sedan, electric = repainted SUV) | **Kenney Car Kit 3.1** by Kenney ([kenney.nl](https://www.kenney.nl)), source pack in `assets-src/kenney-car-kit/` (see its `License.txt`). Only the models the game uses are shipped, compressed by `scripts/assets.mjs` into `src/assets/cars/` | CC0 1.0 |
 | Garage, lift, tool bench, parts shelf, tools, engine bay, battery, tester, ratchet, props | Procedural low-poly geometry in code (`src/render/*`) | Project licence |
 | Textures (floor, walls, bricks, pegboard, wood, posters, labels, street) | Procedural canvas drawing (`src/render/textures.ts`) | Project licence |
 | UI icons and customer avatars | Hand-written inline SVG (`src/ui/icons.ts`) | Project licence |
-| Sound effects | Synthesised at runtime with the Web Audio API (`src/app/audio.ts`) | Project licence |
-| Font: **Fredoka** (`@fontsource/fredoka`, Latin subset) | Milena Brandão / Google Fonts | SIL Open Font License 1.1 |
+| Sound effects and music | Synthesised at runtime with the Web Audio API (`src/app/audio.ts`) | Project licence |
+| Translations (10 languages) | Written for this game (`src/i18n/`) | Project licence |
+| Font: **Fredoka** (`@fontsource/fredoka`, Latin + Latin Extended subsets) | Milena Brandão / Google Fonts | SIL Open Font License 1.1 |
+| Font: **Nunito** (`@fontsource/nunito`, Cyrillic subset, for Russian) | Vernon Adams / Google Fonts | SIL Open Font License 1.1 |
 | Engine: **three.js** | mrdoob & contributors | MIT |
 | CrazyGames SDK v3 | Loaded at runtime from `sdk.crazygames.com` (CrazyGames build only) | CrazyGames terms |
 | GameDistribution HTML5 SDK | Loaded at runtime (GD build only) | GameDistribution terms |
