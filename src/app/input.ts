@@ -47,6 +47,11 @@ export class Input {
     window.addEventListener('pointercancel', () => this.up(true));
   }
 
+  /** the player is pressing / holding / rubbing right now */
+  get busy() {
+    return !!this.active;
+  }
+
   /** wait until the player completes an action on one of the targets */
   interact(targets: Target[]): Promise<string> {
     this.cancel();

@@ -7,6 +7,7 @@ must identify its faults: no other set of the same number of faults that fits th
 **Result: all checks passed.**
 
 Also checked: 100 endless jobs (41-140) and 360 daily jobs (120 days × 3 progress levels).
+Variety: no two identical jobs in a row (career and endless), and consecutive career jobs always change the car type.
 
 ## Career (40 jobs)
 

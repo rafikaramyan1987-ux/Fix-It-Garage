@@ -35,6 +35,7 @@ export class Repairs {
   async orderAndFit(part: PartId, free: boolean) {
     const p = this.p;
     p.phase = `fit:${part}`;
+    p.ui.steps('repair');
     const price = p.job.buy(part, free);
     if (price) {
       await p.ui.countMoney(p.ui.money - price, 0.5);
@@ -68,7 +69,7 @@ export class Repairs {
     if (then && p.job.fixes(part)) await this.fluid(then as 'oil' | 'coolant', null);
     const fixed = p.job.install(part);
     p.setClock();
-    p.markerFor = null;
+    p.mark(null);
     p.expected = null;
     p.tagsFor = [];
     p.ui.prompt(null);
@@ -83,15 +84,18 @@ export class Repairs {
   /** wait for the player on targets, showing marker + tags; returns the id acted on */
   private async act(promptKey: string, targets: Target[], expected: string | null, marker: THREE.Object3D | null) {
     const p = this.p;
-    p.ui.prompt(t(promptKey));
+    // one short hint (only until the player has done this step once), the object to touch glows + gesture hand
+    p.hint(promptKey);
     p.expected = expected ?? targets[0]?.id ?? null;
-    p.markerFor = marker ?? targets[0]?.obj ?? null;
-    this.bay.pulse(targets.map((x) => x.obj));
+    const mk = marker ?? targets.find((x) => x.id === p.expected)?.obj ?? targets[0]?.obj ?? null;
+    p.mark(mk);
+    this.bay.pulse(mk ? [mk] : []);
     const id = await p.input.interact(targets);
     this.bay.pulse([]);
-    p.markerFor = null;
+    p.mark(null);
     p.expected = null;
     p.ui.hideRing();
+    p.hintDone(promptKey);
     return id;
   }
 
@@ -287,7 +291,7 @@ export class Repairs {
       this.fx.sparks(obj.getWorldPosition(V(0, 0, 0)), 26);
       sfx.spark();
       this.rig.shake(0.04, 0.3);
-      p.ui.toast(t(swap.step === 'loosen' ? 'toast.negFirst' : 'toast.posFirst'), 'bad');
+      p.ui.flashHint(t(swap.step === 'loosen' ? 'toast.negFirst' : 'toast.posFirst'));
       p.job.addMinutes(1);
       p.setClock();
       return false;
@@ -516,7 +520,7 @@ export class Repairs {
           () => {
             if (i === star.next) return true;
             sfx.bad();
-            p.ui.toast(t('toast.star'), 'info');
+            p.ui.flashHint(t('toast.star'), 1.2);
             return false;
           },
         ),
@@ -663,9 +667,9 @@ export class Repairs {
         onHoldCancel: () => pouring?.(),
       };
       // release ends the hold: watch the level ourselves
-      p.ui.prompt(t('prompt.pour'));
+      p.hint('prompt.pour');
       p.expected = 'pour';
-      p.markerFor = b;
+      p.mark(b);
       await new Promise<void>((res) => {
         target.onHoldCancel = () => {
           pouring?.();
@@ -675,11 +679,14 @@ export class Repairs {
       });
       p.input.cancel();
       p.expected = null;
-      p.markerFor = null;
-      if (level >= lo && level <= hi) break;
+      p.mark(null);
+      if (level >= lo && level <= hi) {
+        p.hintDone('prompt.pour');
+        break;
+      }
       if (level > hi) {
         sfx.bad();
-        p.ui.toast(t('toast.overfill'), 'bad');
+        p.ui.flashHint(t('toast.overfill'));
         p.job.addMinutes(2);
         await clock.tween(0.6, (k) => {
           level = lerp(level, 0.55, k);

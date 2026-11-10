@@ -28,6 +28,7 @@ export function overflow(page: Page) {
       const txt = (e.textContent ?? '').trim().slice(0, 40);
       if (r.right > vw + 1 || r.left < -1) bad.push(`outside viewport: <${e.className}> "${txt}"`);
       if (e.matches('.fit, button, .btn, .lang, .tab, .nm, h2, .un') && e.clientWidth > 0 && e.scrollWidth > e.clientWidth + 2 && getComputedStyle(e).overflowX !== 'auto') bad.push(`text overflows: <${e.className}> "${txt}" ${e.scrollWidth}>${e.clientWidth}`);
+      if (e.matches('.hintbar .ht') && e.scrollHeight > e.clientHeight + 2) bad.push(`hint cut (more than 2 lines): "${txt}"`);
     }
     return [...new Set(bad)];
   });
@@ -39,4 +40,19 @@ export const jobFaults = (page: Page) => page.evaluate(() => (window.__game!.pla
 
 export function richSave(extra: object = {}) {
   return { money: 5000, career: 1, stars: {}, upgrades: [], book: [], ach: [], stats: { jobs: 0, perfect: 0, streak: 0, noWaste: 0, tricky: 0, cars: [], earned: 0, daily: 0 }, daily: { day: '', done: false }, settings: { music: true, sfx: true, lang: null }, tutorialDone: true, ...extra };
+}
+
+/** hint banners or toasts that cover the object the player has to touch (target id) */
+export function hintOverlaps(page: Page, id: string) {
+  return page.evaluate((tid) => {
+    const tg = window.__game!.targets().find((x) => x.id === tid);
+    if (!tg) return [];
+    const bad: string[] = [];
+    for (const e of document.querySelectorAll<HTMLElement>('#ui .hintbar, #ui .toast')) {
+      const r = e.getBoundingClientRect();
+      const m = 18;
+      if (tg.x > r.left - m && tg.x < r.right + m && tg.y > r.top - m && tg.y < r.bottom + m) bad.push(`${e.className} covers ${tid}: "${(e.textContent ?? '').slice(0, 40)}"`);
+    }
+    return bad;
+  }, id);
 }

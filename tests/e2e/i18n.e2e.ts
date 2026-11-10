@@ -6,7 +6,7 @@ const SIZES = [
   { width: 1920, height: 1080, mobile: false },
 ];
 
-for (const lang of ['de', 'ru', 'fr', 'pl', 'tr']) {
+for (const lang of ['de', 'ru', 'fr', 'pl', 'tr', 'en', 'it', 'es', 'pt', 'nl']) {
   for (const size of SIZES) {
     test(`${lang} at ${size.width}x${size.height}: no text overflows`, async ({ browser }) => {
       const ctx = await browser.newContext({ viewport: { width: size.width, height: size.height }, hasTouch: size.mobile, isMobile: size.mobile });
@@ -35,6 +35,8 @@ for (const lang of ['de', 'ru', 'fr', 'pl', 'tr']) {
       await d.click('[data-part=alternator]');
       await check('parts sheet');
       await d.click('.sheet .btn.ghost');
+      await d.until(() => !!document.querySelector('.toolbar'), 40);
+      await check('hint banner over the toolbar');
       await d.click('[data-action=pause]');
       await check('pause');
       await d.click('[data-action=resume]');

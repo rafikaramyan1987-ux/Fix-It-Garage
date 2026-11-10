@@ -11,8 +11,8 @@
 
 import { AD_TIMEOUT, MIDGAME_GAP, loadScript, type AdSlot, type Platform } from './types';
 
-/** placeholder until Fix It Garage gets its own GameDistribution game id (Phase B) */
-export const GD_GAME_ID = '00000000000000000000000000000000';
+/** Fix It Garage's GameDistribution game ID (checked in CI by scripts/submission/check.mjs) */
+export const GD_GAME_ID = 'ca104008d4054b3b9652dd239bc9893f';
 export const GD_SDK_URL = 'https://html5.api.gamedistribution.com/main.min.js';
 export const GD_SCRIPT_ID = 'gamedistribution-jssdk';
 /** a rewarded ad that closed without SDK_REWARDED_WATCH_COMPLETE gets this long for a late event (ms) */

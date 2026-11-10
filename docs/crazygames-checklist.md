@@ -2,7 +2,10 @@
 
 ## Onboarding
 - [x] **Straight into play:** a new player is in the first job within a few seconds of loading. There is no menu, intro or text page first, and the car drives in at once. Returning players get the main menu. (e2e: "a new player lands straight in the first job")
-- [x] **Tutorial inside gameplay:** a hand pointer and a glowing highlight on the next button, or an arrow on the next 3D part. Each step has one short line of text, one step at a time.
+- [x] **Tutorial inside gameplay:** a hand pointer and a glowing highlight on the next button. On 3D parts, the part to touch glows and pulses, with an animated hand that shows the gesture (tap, hold, drag, rub) and a ring that fills while holding; when one nut or bolt is done, the next one lights up.
+- [x] **One hint at a time, never over the action:** a single slim, semi-transparent line at the top or bottom edge, on the side away from the part to touch. It is at most one line on phones (two only if unavoidable), and it hides after the player's first correct action and is not shown again for that step. Mistakes briefly replace it instead of adding a second bubble. (e2e: "hints must never cover the object to touch")
+- [x] **Plain words:** no jargon such as "star pattern"; one instruction per line in all 10 languages.
+- [x] **The job's progress is always shown:** a Find → Repair → Test bar at the top, plus a compact ticket strip (avatar, short quote, reward) that opens on tap.
 - [x] **Only the core actions are taught:** use a tool (battery tester), order and swap a part (battery), test the car.
 - [x] **Everything else is introduced when first needed:**
   - star-pattern wheel nuts, pouring, paint and the lift buttons each explain themselves with a short prompt the first time they appear
