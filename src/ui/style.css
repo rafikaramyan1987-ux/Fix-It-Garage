@@ -447,7 +447,7 @@ svg { display: block; }
 .skipchip.fast .ff { animation: ffpulse 0.4s ease-in-out infinite alternate; }
 @keyframes ffpulse { from { opacity: 0.5; } to { opacity: 1; } }
 
-/* web build (main.ts adds .fit-toolbar): in a landscape frame narrower than the toolbar (e.g. an
+/* web + Playgama builds (main.ts adds .fit-toolbar): in a landscape frame narrower than the toolbar (e.g. an
    iframe of 640x480) the tool tiles shrink instead of pushing Repair / Test out of the screen */
 @media (orientation: landscape) {
   .fit-toolbar .toolbar { left: 12px; right: 12px; width: fit-content; margin: 0 auto; transform: none; animation-name: riseP; }

@@ -3,7 +3,7 @@ const SAVE_KEY = 'fixitgarage.save.v1';
 
 const game = {
   slug: 'fix-it-garage',
-  /** the ad-free web build: no portal SDK, and `ADS` (src/play/play.ts) is false, so no rewarded-ad buttons and no interstitials */
+  /** the ad-free web build: no portal SDK, and `ads()` (src/play/play.ts) is false, so no rewarded-ad buttons and no interstitials */
   build: 'npm run build:web',
   dist: 'dist-web',
   /** nothing to leave out of dist-web (zip.mjs passes these to `zip -x`, which needs at least one pattern) */
