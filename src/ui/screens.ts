@@ -6,8 +6,8 @@ import { esc, LANGS, LANG_NAMES, t, type Lang } from '../i18n';
 import { icons } from './icons';
 import { el } from './ui';
 
-function panel(root: HTMLElement, cls: string, title: string, onClose: () => void) {
-  const wrap = el('div', `screen ${cls}`);
+function panel(root: HTMLElement, cls: string, title: string, onClose: () => void, still = false) {
+  const wrap = el('div', `screen ${cls}${still ? ' still' : ''}`);
   const card = el('div', 'panel');
   const head = el('div', 'phead', `<h2 class="fit">${esc(title)}</h2>`);
   const x = el('button', 'iconbtn close', '✕');
@@ -81,9 +81,11 @@ export interface SettingsHooks {
 
 export function settingsScreen(root: HTMLElement, h: SettingsHooks) {
   return new Promise<void>((res) => {
+    let first = true;
     const render = () => {
       root.querySelector('.screen.settings')?.remove();
-      const { wrap, body } = panel(root, 'settings', t('settings.title'), () => (wrap.remove(), res()));
+      const { wrap, body } = panel(root, 'settings', t('settings.title'), () => (wrap.remove(), res()), !first);
+      first = false;
       const toggle = (label: string, on: boolean, act: string, f: (v: boolean) => void) => {
         const r = el('div', 'srow', `<span class="fit">${esc(label)}</span>`);
         const b = el('button', `switch${on ? ' on' : ''}`, `<span>${esc(t(on ? 'common.on' : 'common.off'))}</span>`);
@@ -196,9 +198,11 @@ export function pauseScreen(root: HTMLElement) {
 
 export function garageScreen(root: HTMLElement, save: SaveData, buy: (u: UpgradeId) => boolean) {
   return new Promise<void>((res) => {
+    let first = true;
     const render = () => {
       root.querySelector('.screen.garage')?.remove();
-      const { wrap, body } = panel(root, 'garage', t('garage.title'), () => (wrap.remove(), res()));
+      const { wrap, body } = panel(root, 'garage', t('garage.title'), () => (wrap.remove(), res()), !first);
+      first = false;
       body.append(el('p', 'pdesc', esc(t('garage.desc'))));
       const list = el('div', 'cards');
       for (const u of UPGRADE_IDS) {

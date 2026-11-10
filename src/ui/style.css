@@ -329,3 +329,5 @@ svg { display: block; }
   .mbtn { font-size: 16px; }
   .phead h2 { font-size: 22px; }
 }
+
+.screen.still, .screen.still .panel { animation: none; }

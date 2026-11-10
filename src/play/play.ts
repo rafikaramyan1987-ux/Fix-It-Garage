@@ -415,7 +415,7 @@ export class Play {
         onRepair: () => res({ k: 'repair' }),
         onTest: () => res({ k: 'test' }),
         repairReady: j.clues.size > 0 && !anyFixed,
-        testReady: anyFixed,
+        testReady: anyFixed || j.wrong.length > 0,
       });
       if (this.tut) {
         if (!j.clues.size) this.tutorial('tool', '[data-tool=tester]');
@@ -712,8 +712,8 @@ export class Play {
     const p = j.payout();
     this.phase = 'payment';
     if (this.tut) {
-      this.tutorial('done');
-      clock.later(3, () => this.endTutorial(true));
+      this.endTutorial(true);
+      clock.later(1.2, () => this.ui.toast(t('tut.done'), 'good', 3));
     }
     sfx.cash();
     const before = this.save.career;

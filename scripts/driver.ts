@@ -79,8 +79,23 @@ export class Driver {
     );
   }
 
+  /** let pop-in UI animations finish (they run on the game clock in capture mode) */
+  async settle() {
+    for (let i = 0; i < 20; i++) {
+      const busy = await this.page.evaluate(() =>
+        document.getAnimations().some((a) => {
+          const tm = a.effect?.getComputedTiming();
+          return tm && tm.iterations !== Infinity && (tm.progress ?? 1) < 1 && (a as CSSAnimation).animationName !== 'toast';
+        }),
+      );
+      if (!busy) return;
+      await this.tick(1 / this.fps);
+    }
+  }
+
   async click(selector: string) {
     await this.until(new Function(`return !!document.querySelector(${JSON.stringify(selector)})`) as () => boolean, 30);
+    await this.settle();
     const box = await this.page.locator(selector).first().boundingBox();
     if (!box) throw new Error(`no box for ${selector}`);
     const x = box.x + box.width / 2,
@@ -165,12 +180,12 @@ export class Driver {
   private async rub(id: string) {
     const t = await this.target(id);
     await this.tapDot(t.x, t.y);
-    await this.page.mouse.move(t.x - 50, t.y);
+    await this.page.mouse.move(t.x, t.y);
     await this.page.mouse.down();
     for (let i = 0; i < 80; i++) {
       const has = await this.page.evaluate((x) => window.__game!.targets().some((q) => q.id === x), id);
       if (!has) break;
-      await this.page.mouse.move(t.x + (i % 2 ? -50 : 50), t.y + ((i % 4) - 1.5) * 8, { steps: 4 });
+      await this.page.mouse.move(t.x + (i % 2 ? -35 : 35), t.y + ((i % 4) - 1.5) * 6, { steps: 4 });
       await this.tick(1 / this.fps);
     }
     await this.page.mouse.up();
