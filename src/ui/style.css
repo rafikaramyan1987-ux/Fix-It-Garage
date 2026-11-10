@@ -333,7 +333,7 @@ svg { display: block; }
 .screen.still, .screen.still .panel { animation: none; }
 
 /* store covers: the title over the garage, no buttons */
-.cover-mode .menu, .cover-mode .trophy, .cover-mode .hud, .cover-mode .title .sub { display: none !important; }
+.cover-mode .menu, .cover-mode .trophy, .cover-mode .hud, .cover-mode .title .sub, .cover-mode .kbtn, .cover-mode .kpanel { display: none !important; }
 .cover-mode .title { background: none; }
 .cover-mode .logo3d { top: 6%; transform: translateX(-50%) rotate(-3deg); }
 .cover-mode .logo3d .l1 { font-size: clamp(72px, 13vw, 190px); }
