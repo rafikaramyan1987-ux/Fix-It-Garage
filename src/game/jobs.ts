@@ -103,10 +103,23 @@ export function carsUnlocked(n: number): CarType[] {
   return CAR_TYPES.filter((c) => CARS[c].unlock <= Math.max(1, n));
 }
 
-/** career job n (1-based); after the career, endless generated jobs */
+const sameJob = (a: JobSpec, b: JobSpec) => a.car === b.car && [...a.faults].sort().join() === [...b.faults].sort().join();
+const memo = new Map<number, JobDef>();
+
+/** career job n (1-based); after the career, endless generated jobs, never the same as the job before */
 export function careerJob(n: number): JobDef {
   if (n <= CAREER.length) return buildJob(n, CAREER[n - 1]);
-  const r = rng(n * 7919);
+  const hit = memo.get(n);
+  if (hit) return hit;
+  const prev = careerJob(n - 1);
+  let job = endlessJob(n, 0);
+  for (let salt = 1; sameJob(job, prev) && salt < 20; salt++) job = endlessJob(n, salt);
+  memo.set(n, job);
+  return job;
+}
+
+function endlessJob(n: number, salt: number): JobDef {
+  const r = rng(n * 7919 + salt * 104729);
   const spec = randomSpec(r, CAR_TYPES, INFERABLE.concat(r() < 0.2 ? ['scratch'] : []), true);
   const mod: Modifier | undefined = n % 5 === 0 ? (['misleading', 'rush', 'picky', 'vip'] as Modifier[])[Math.floor(r() * 4)] : undefined;
   if (mod === 'misleading' && !spec.faults.some((f) => FAULTS[f].misleads)) return buildJob(n, { ...spec, mod: 'rush' });

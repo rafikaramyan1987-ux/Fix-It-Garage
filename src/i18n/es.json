@@ -43,6 +43,7 @@
   "hud.hide": "Ocultar ▴",
   "hud.twoFaults": "¡Dos problemas!",
   "hud.tricky": "Cliente difícil",
+  "hud.reward": "Recompensa ${pay} + bonus de tiempo ${bonus}",
 
   "mod.misleading": "Seguro que sabe qué le pasa al coche. ¡Confía en tus pistas, no en su idea!",
   "mod.rush": "Tiene prisa: tiempo meta ajustado y doble bonus de tiempo.",
@@ -314,6 +315,7 @@
   "toast.noMoney": "Aún no tienes dinero suficiente",
   "toast.newCar": "Nuevo tipo de coche desbloqueado: {car}",
   "toast.freePart": "¡Pieza gratis!",
+  "toast.garageHint": "¡Ya puedes comprar una mejora! Abre el Garaje desde el menú.",
 
   "ad.notice": "Opcional: mira un anuncio corto para ganar un bonus.",
   "ad.hint": "Ver anuncio: una pista",
@@ -405,13 +407,20 @@
   "ach.rich.desc": "Gana $1000 en total.",
 
   "tut.skip": "Saltar tutorial",
-  "tut.ticket": "¡Un cliente! Su ficha dice qué le pasa al coche.",
-  "tut.tool": "Los clics suenan a problema de batería. Toca el <b>probador de batería</b>.",
-  "tut.leads": "Pon las pinzas en los bornes de la batería.",
-  "tut.clue": "11.2 V es muy poco. Las pistas se guardan en la ficha.",
-  "tut.repair": "Ya sabes qué pieza falla: toca <b>Reparar</b>.",
-  "tut.part": "Pide una <b>batería</b> nueva.",
-  "tut.swap": "Sigue la flecha: cada paso es un toque o una pulsación larga.",
-  "tut.test": "Ahora toca <b>Probar</b> para arrancar el coche.",
-  "tut.done": "¡Buen trabajo! Cada coche es un nuevo reto. ¡Diviértete!"
+  "tut.ticket": "Lee lo que dice el cliente.",
+  "tut.tool": "Toca el <b>Probador</b>.",
+  "tut.leads": "Toca los bornes de la batería.",
+  "tut.clue": "11.2 V: la batería está débil.",
+  "tut.repair": "Toca <b>Reparar</b>.",
+  "tut.part": "Pide una <b>batería</b>.",
+  "tut.swap": "Sigue la flecha.",
+  "tut.test": "Toca <b>Probar</b>.",
+  "tut.done": "¡Bien hecho! ¡Diviértete!",
+  "kb.title": "Teclado",
+  "kb.tools": "Usar herramienta",
+  "kb.repair": "Reparar",
+  "kb.test": "Prueba en carretera",
+  "kb.hint": "Pista",
+  "kb.act": "Siguiente paso / confirmar",
+  "kb.pause": "Pausa"
 }

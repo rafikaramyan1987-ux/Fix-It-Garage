@@ -43,6 +43,7 @@
   "hud.hide": "Gizle ▴",
   "hud.twoFaults": "İki sorun var!",
   "hud.tricky": "Zor müşteri",
+  "hud.reward": "Ödül ${pay} + süre bonusu ${bonus}",
 
   "mod.misleading": "Neyin bozuk olduğunu bildiğinden emin. Onun tahminine değil, ipuçlarına güven!",
   "mod.rush": "Acelesi var: dar hedef süre, çifte süre bonusu.",
@@ -314,6 +315,7 @@
   "toast.noMoney": "Henüz yeterli para yok",
   "toast.newCar": "Yeni araba türü açıldı: {car}",
   "toast.freePart": "Bedava parça!",
+  "toast.garageHint": "Bir yükseltme alabilirsin! Menüden Garaj'ı aç.",
 
   "ad.notice": "İsteğe bağlı: bonus için kısa bir reklam izle.",
   "ad.hint": "Reklam izle: ipucu al",
@@ -405,13 +407,20 @@
   "ach.rich.desc": "Toplam $1000 kazan.",
 
   "tut.skip": "Eğitimi atla",
-  "tut.ticket": "Bir müşteri! Fişinde neyin ters gittiği yazıyor.",
-  "tut.tool": "Tıkırtı akü sorunu gibi. <b>Akü test cihazına</b> dokun.",
-  "tut.leads": "Kabloları akü kutuplarına tak.",
-  "tut.clue": "11.2 V çok zayıf. İpuçları fişe kaydedilir.",
-  "tut.repair": "Arızalı parçayı biliyorsun: <b>Tamir</b>'e dokun.",
-  "tut.part": "Yeni bir <b>akü</b> sipariş et.",
-  "tut.swap": "Oku izle: her adım kısa bir dokunuş ya da basılı tutuş.",
-  "tut.test": "Şimdi arabayı çalıştırmak için <b>Dene</b>'ye dokun.",
-  "tut.done": "Harika iş! Her araba yeni bir bulmaca. İyi eğlenceler!"
+  "tut.ticket": "Müşterinin ne dediğini oku.",
+  "tut.tool": "<b>Akü test cihazı</b>'na dokun.",
+  "tut.leads": "Akü kutuplarına dokun.",
+  "tut.clue": "11.2 V: akü zayıf.",
+  "tut.repair": "<b>Tamir</b>'e dokun.",
+  "tut.part": "Bir <b>akü</b> sipariş et.",
+  "tut.swap": "Oku izle.",
+  "tut.test": "<b>Dene</b>'ye dokun.",
+  "tut.done": "Aferin! İyi eğlenceler!",
+  "kb.title": "Klavye",
+  "kb.tools": "Alet kullan",
+  "kb.repair": "Tamir",
+  "kb.test": "Deneme sürüşü",
+  "kb.hint": "İpucu",
+  "kb.act": "Sonraki adım / onayla",
+  "kb.pause": "Duraklat"
 }

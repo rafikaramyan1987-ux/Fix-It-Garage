@@ -43,6 +43,7 @@
   "hud.hide": "Cacher ▴",
   "hud.twoFaults": "Deux pannes !",
   "hud.tricky": "Client compliqué",
+  "hud.reward": "Récompense ${pay} + bonus de temps ${bonus}",
 
   "mod.misleading": "Il est sûr de savoir ce qui cloche. Fie-toi à tes indices, pas à son avis !",
   "mod.rush": "Pressé : temps serré, bonus de temps double.",
@@ -314,6 +315,7 @@
   "toast.noMoney": "Pas encore assez d'argent",
   "toast.newCar": "Nouveau type de voiture débloqué : {car}",
   "toast.freePart": "Pièce gratuite !",
+  "toast.garageHint": "Tu peux t'offrir une amélioration ! Ouvre le Garage depuis le menu.",
 
   "ad.notice": "Facultatif : regarde une courte pub pour gagner un bonus.",
   "ad.hint": "Regarder une pub : obtenir une aide",
@@ -405,13 +407,20 @@
   "ach.rich.desc": "Gagne $1000 au total.",
 
   "tut.skip": "Passer",
-  "tut.ticket": "Un client ! Son ticket dit ce qui ne va pas.",
-  "tut.tool": "Des cliquetis, ça ressemble à un problème de batterie. Touche le <b>test batterie</b>.",
-  "tut.leads": "Pince les fils sur les bornes de la batterie.",
-  "tut.clue": "11.2 V, c'est trop faible. Les indices sont notés sur le ticket.",
-  "tut.repair": "Tu connais la pièce défectueuse : touche <b>Réparer</b>.",
-  "tut.part": "Commande une <b>batterie</b> neuve.",
-  "tut.swap": "Suis la flèche : chaque étape est un court appui ou un appui long.",
-  "tut.test": "Maintenant touche <b>Tester</b> pour démarrer la voiture.",
-  "tut.done": "Bravo ! Chaque voiture est une nouvelle énigme. Amuse-toi bien !"
+  "tut.ticket": "Lis ce que dit le client.",
+  "tut.tool": "Touche le <b>Test batterie</b>.",
+  "tut.leads": "Touche les bornes de la batterie.",
+  "tut.clue": "11.2 V : la batterie est faible.",
+  "tut.repair": "Touche <b>Réparer</b>.",
+  "tut.part": "Commande une <b>batterie</b>.",
+  "tut.swap": "Suis la flèche.",
+  "tut.test": "Touche <b>Tester</b>.",
+  "tut.done": "Bravo ! Amuse-toi bien !",
+  "kb.title": "Clavier",
+  "kb.tools": "Utiliser un outil",
+  "kb.repair": "Réparer",
+  "kb.test": "Essai sur route",
+  "kb.hint": "Aide",
+  "kb.act": "Étape suivante / valider",
+  "kb.pause": "Pause"
 }

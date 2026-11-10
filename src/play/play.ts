@@ -46,6 +46,8 @@ export class Play {
   expected: string | null = null;
   paused = false;
   private adNoticeShown = false;
+  private firstRunDone = false;
+  private garageHinted = false;
   private tut: { step: string; close: () => void } | null = null;
   private frameFn = (dt: number, tt: number) => this.frame(dt, tt);
 
@@ -62,6 +64,17 @@ export class Play {
     ui.onPause = () => void this.pause();
     ui.setMoney(this.save.money);
     window.addEventListener('pointerdown', () => unlockAudio(), { capture: true });
+    // instant feedback on every tap: a soft click on any button, a ring where the 3D view was tapped
+    ui.root.addEventListener('click', (e) => {
+      if ((e.target as HTMLElement).closest('button')) sfx.tap();
+    });
+    this.input.onHit = (x, y) => ui.ripple(x, y);
+    this.input.onMiss = (x, y) => {
+      ui.ripple(x, y, true);
+      sfx.miss();
+    };
+    window.addEventListener('keydown', (e) => this.key(e, true));
+    window.addEventListener('keyup', (e) => this.key(e, false));
     clock.every(this.frameFn);
     this.refreshGarage();
   }
@@ -84,6 +97,43 @@ export class Play {
 
   get ctx() {
     return garageCtx(this.save);
+  }
+
+  // ---------- keyboard (optional): KeyboardEvent.code, so QWERTY / AZERTY alike; P pauses, Escape is never used ----------
+  private key(e: KeyboardEvent, down: boolean) {
+    if (e.ctrlKey || e.metaKey || e.altKey || e.code === 'Escape') return;
+    const root = this.ui.root;
+    const click = (sel: string) => {
+      const b = root.querySelector<HTMLElement>(sel);
+      if (!b) return false;
+      b.click();
+      return true;
+    };
+    const act = e.code === 'Space' || e.code === 'Enter' || e.code === 'NumpadEnter';
+    if (act) e.preventDefault();
+    if (!down) {
+      if (act) this.input.keyUp();
+      return;
+    }
+    if (e.repeat) return;
+    unlockAudio();
+    if (e.code === 'KeyP') {
+      if (!click('.screen.pause [data-action=resume]')) void this.pause();
+      return;
+    }
+    if (root.querySelector('.screen, .dialog')) return;
+    const digit = /^(Digit|Numpad)([1-7])$/.exec(e.code);
+    if (digit) {
+      click(`.toolbar [data-tool=${TOOL_IDS[Number(digit[2]) - 1]}]`);
+      return;
+    }
+    if (e.code === 'KeyR') click('.toolbar [data-tool=repair]');
+    else if (e.code === 'KeyT') click('.toolbar [data-tool=test]');
+    else if (e.code === 'KeyH') click('.toolbar [data-tool=hint]');
+    else if (act) {
+      if (click('.readout button') || click('[data-action=center]') || click('.paycard [data-action=next]') || click('.title [data-action=play]')) return;
+      this.input.keyDown(this.expected);
+    }
   }
 
   // ---------- camera shots ----------
@@ -189,11 +239,18 @@ export class Play {
     this.stage.rig.snap(this.shots().title);
     sdk.loadingStop();
     await sdk.ready?.();
+    this.ui.keysHelp(ADS);
+    // a brand-new player lands straight in the first job: the tutorial happens inside gameplay
+    const cover = this.ui.root.classList.contains('cover-mode');
+    if (!cover && this.save.stats.jobs === 0 && this.save.career === 1 && !this.save.tutorialDone && !this.firstRunDone) {
+      this.firstRunDone = true;
+      await this.career();
+      return;
+    }
     for (;;) {
       this.phase = 'menu';
       const choice = await mainMenu(this.ui.root, { career: this.save.career, total: CAREER_LENGTH, dailyDone: dailyDone(this.save, todayKey()) });
       unlockAudio();
-      sfx.tap();
       if (choice === 'play') {
         await sdk.midgame('preroll');
         await this.career();
@@ -327,13 +384,17 @@ export class Play {
     this.tut?.close();
     const close = tutorialBubble(this.ui.root, t(`tut.${step}`), () => this.endTutorial(true));
     this.tut = { step, close };
+    this.ui.root.querySelectorAll('.tut-glow').forEach((e) => e.classList.remove('tut-glow'));
     if (typeof target === 'string') {
-      const r = this.ui.root.querySelector(target)?.getBoundingClientRect();
+      const elm = this.ui.root.querySelector(target);
+      elm?.classList.add('tut-glow');
+      const r = elm?.getBoundingClientRect();
       this.ui.hand(r ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null);
     } else this.ui.hand(null);
   }
 
   private endTutorial(save: boolean) {
+    this.ui.root.querySelectorAll('.tut-glow').forEach((e) => e.classList.remove('tut-glow'));
     this.tut?.close();
     this.tut = null;
     this.ui.hand(null);
@@ -365,6 +426,7 @@ export class Play {
     sdk.gameplayStart();
     this.ui.showMoney(false);
     this.ui.showHud(true);
+    this.ui.keysHelp(ADS && !this.job.hintUsed);
     this.setClock();
     this.stage.rig.snap(this.shots().garage);
     await this.driveIn();
@@ -381,9 +443,9 @@ export class Play {
   private async driveIn() {
     this.phase = 'arrive';
     const r = this.car.root;
-    sfx.drive(2.6);
+    sfx.drive(2.0);
     let last = -12;
-    await clock.tween(2.6, (k) => {
+    await clock.tween(2.0, (k) => {
       r.position.z = lerp(-12, 0, k);
       this.car.spinWheels(r.position.z - last);
       last = r.position.z;
@@ -423,7 +485,6 @@ export class Play {
         else this.tutorial('test', '[data-tool=test]');
       }
     });
-    sfx.tap();
     this.ui.toolbar(null);
     this.ui.prompt(null);
     if (choice.k === 'tool') {
@@ -443,8 +504,9 @@ export class Play {
       return false;
     }
     if (choice.k === 'test') return this.testDrive();
+    const sheet = this.ui.partsSheet(this.ui.money, j.def.car, ADS);
     if (this.tut) this.tutorial('part', '[data-part=battery]');
-    const pick = await this.ui.partsSheet(this.ui.money, j.def.car, ADS);
+    const pick = await sheet;
     if (!pick) return false;
     let free = false;
     if (pick.free) {
@@ -737,6 +799,11 @@ export class Play {
     this.save.money = this.ui.money;
     this.persist();
     this.announce(ach);
+    // introduce the garage when the first upgrade becomes affordable
+    if (!this.garageHinted && !this.save.upgrades.length && this.save.money >= Math.min(...Object.values(UPGRADES).map((u) => u.price))) {
+      this.garageHinted = true;
+      clock.later(1.2, () => this.ui.toast(t('toast.garageHint'), 'info', 3));
+    }
     for (const c of CAR_TYPES) if (CARS[c].unlock === this.save.career && before < this.save.career && !j.def.daily) clock.later(0.3, () => this.ui.toast(t('toast.newCar', { car: t(`car.${c}`) }), 'good', 2.4));
     await clock.wait(choice === 'menu' ? 0.3 : 0.6);
     return choice === 'menu' ? 'menu' : 'next';

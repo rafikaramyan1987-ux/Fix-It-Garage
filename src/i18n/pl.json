@@ -43,6 +43,7 @@
   "hud.hide": "Ukryj ▴",
   "hud.twoFaults": "Dwie usterki!",
   "hud.tricky": "Trudny klient",
+  "hud.reward": "Nagroda ${pay} + premia za czas ${bonus}",
 
   "mod.misleading": "Na pewno wie, co jest nie tak. Ufaj wskazówkom, nie jego domysłom!",
   "mod.rush": "Spieszy się: krótki czas docelowy, podwójna premia za czas.",
@@ -314,6 +315,7 @@
   "toast.noMoney": "Jeszcze za mało pieniędzy",
   "toast.newCar": "Odblokowano nowy typ auta: {car}",
   "toast.freePart": "Darmowa część!",
+  "toast.garageHint": "Stać cię na ulepszenie! Otwórz Garaż z menu.",
 
   "ad.notice": "Opcjonalnie: obejrzyj krótką reklamę i odbierz bonus.",
   "ad.hint": "Reklama: podpowiedź",
@@ -405,13 +407,20 @@
   "ach.rich.desc": "Zarób łącznie $1000.",
 
   "tut.skip": "Pomiń samouczek",
-  "tut.ticket": "Klient! Na jego karcie jest napisane, co jest nie tak.",
-  "tut.tool": "Stukanie to zwykle problem z akumulatorem. Dotknij <b>testera akumulatora</b>.",
-  "tut.leads": "Zapnij przewody na biegunach akumulatora.",
-  "tut.clue": "11.2 V to za mało. Wskazówki zapisują się na karcie.",
-  "tut.repair": "Znasz już uszkodzoną część: dotknij <b>Napraw</b>.",
-  "tut.part": "Zamów nowy <b>akumulator</b>.",
-  "tut.swap": "Idź za strzałką: każdy krok to krótkie dotknięcie lub przytrzymanie.",
-  "tut.test": "Teraz dotknij <b>Test</b>, by odpalić auto.",
-  "tut.done": "Świetna robota! Każde auto to nowa zagadka. Miłej zabawy!"
+  "tut.ticket": "Przeczytaj, co mówi klient.",
+  "tut.tool": "Wybierz <b>Tester akumulatora</b>.",
+  "tut.leads": "Dotknij biegunów akumulatora.",
+  "tut.clue": "11.2 V: akumulator jest słaby.",
+  "tut.repair": "Dotknij <b>Napraw</b>.",
+  "tut.part": "Zamów <b>akumulator</b>.",
+  "tut.swap": "Idź za strzałką.",
+  "tut.test": "Dotknij <b>Test</b>.",
+  "tut.done": "Świetnie! Miłej zabawy!",
+  "kb.title": "Klawiatura",
+  "kb.tools": "Użyj narzędzia",
+  "kb.repair": "Napraw",
+  "kb.test": "Jazda próbna",
+  "kb.hint": "Podpowiedź",
+  "kb.act": "Dalej / zatwierdź",
+  "kb.pause": "Pauza"
 }

@@ -81,6 +81,13 @@ export function validate(): Report {
   // endless jobs and daily jobs are generated: check a good sample
   let endless = 0;
   for (let n = 41; n <= 140; n++, endless++) checkJob(careerJob(n), issues);
+  // variety: never two identical jobs in a row (career + endless), and consecutive jobs differ in car or faults
+  for (let n = 2; n <= 140; n++) {
+    const a = careerJob(n - 1),
+      b = careerJob(n);
+    if (a.car === b.car && [...a.faults].sort().join() === [...b.faults].sort().join()) issues.push(`jobs ${n - 1} and ${n} are identical`);
+  }
+  for (let n = 2; n <= 40; n++) if (careerJob(n - 1).car === careerJob(n).car) issues.push(`jobs ${n - 1} and ${n} use the same car type`);
   let daily = 0;
   for (let d = 0; d < 120; d++)
     for (const p of [0, 12, 40]) {
@@ -101,7 +108,8 @@ export function reportMarkdown(r: Report) {
   out.push(r.issues.length ? `**${r.issues.length} issue(s):**` : '**Result: all checks passed.**', '');
   for (const i of r.issues) out.push(`- ${i}`);
   if (r.issues.length) out.push('');
-  out.push(`Also checked: ${r.checked.endless} endless jobs (41-140) and ${r.checked.daily} daily jobs (120 days × 3 progress levels).`, '');
+  out.push(`Also checked: ${r.checked.endless} endless jobs (41-140) and ${r.checked.daily} daily jobs (120 days × 3 progress levels).`);
+  out.push('Variety: no two identical jobs in a row (career and endless), and consecutive career jobs always change the car type.', '');
   out.push('## Career (40 jobs)', '');
   out.push('| # | Car | Fault(s) | Tricky | Fastest diagnosis | Fastest solve | Target | Labour | Time bonus | Running total |');
   out.push('| ---: | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: |');

@@ -43,6 +43,7 @@
   "hud.hide": "Sluit ▴",
   "hud.twoFaults": "Twee problemen!",
   "hud.tricky": "Lastige klant",
+  "hud.reward": "Beloning ${pay} + tijdbonus ${bonus}",
 
   "mod.misleading": "Ze weten zeker wat er mis is. Vertrouw op je aanwijzingen, niet op hun gok!",
   "mod.rush": "Heeft haast: krappe doeltijd, dubbele tijdbonus.",
@@ -314,6 +315,7 @@
   "toast.noMoney": "Nog niet genoeg geld",
   "toast.newCar": "Nieuw autotype ontgrendeld: {car}",
   "toast.freePart": "Gratis onderdeel!",
+  "toast.garageHint": "Je kunt een upgrade betalen! Open de Garage via het menu.",
 
   "ad.notice": "Optioneel: kijk een korte advertentie voor een bonus.",
   "ad.hint": "Kijk een advertentie: krijg een tip",
@@ -405,13 +407,20 @@
   "ach.rich.desc": "Verdien in totaal $1000.",
 
   "tut.skip": "Sla uitleg over",
-  "tut.ticket": "Een klant! Op hun bonnetje staat wat er mis voelt.",
-  "tut.tool": "Klikken klinkt als een accuprobleem. Tik op de <b>accutester</b>.",
-  "tut.leads": "Klem de kabels op de polen van de accu.",
-  "tut.clue": "11.2 V is te zwak. Aanwijzingen worden op het bonnetje bewaard.",
-  "tut.repair": "Je weet welk onderdeel kapot is: tik op <b>Repareer</b>.",
-  "tut.part": "Bestel een nieuwe <b>accu</b>.",
-  "tut.swap": "Volg de pijl: elke stap is een korte tik of een lang indrukken.",
-  "tut.test": "Tik nu op <b>Test</b> om de auto te starten.",
-  "tut.done": "Goed gedaan! Elke auto is een nieuwe puzzel. Veel plezier!"
+  "tut.ticket": "Lees wat de klant zegt.",
+  "tut.tool": "Tik op de <b>Accutester</b>.",
+  "tut.leads": "Tik op de accupolen.",
+  "tut.clue": "11.2 V: de accu is zwak.",
+  "tut.repair": "Tik op <b>Repareer</b>.",
+  "tut.part": "Bestel een <b>accu</b>.",
+  "tut.swap": "Volg de pijl.",
+  "tut.test": "Tik op <b>Test</b>.",
+  "tut.done": "Goed gedaan! Veel plezier!",
+  "kb.title": "Toetsenbord",
+  "kb.tools": "Tool gebruiken",
+  "kb.repair": "Repareer",
+  "kb.test": "Proefrit",
+  "kb.hint": "Tip",
+  "kb.act": "Volgende stap / bevestigen",
+  "kb.pause": "Pauze"
 }

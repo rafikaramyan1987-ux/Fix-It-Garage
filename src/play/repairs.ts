@@ -137,8 +137,28 @@ export class Repairs {
     };
   }
 
+  /** with the impact wrench, one hold turns every nut of a group at once */
+  private async allAtOnce(nuts: THREE.Object3D[], loosen: boolean, spin: (i: number, k: number) => void, after: (i: number) => void) {
+    const id = await this.act(
+      loosen ? 'prompt.boltsOff' : 'prompt.boltsOn',
+      [this.boltTarget('all', nuts[0], (k) => nuts.forEach((_, i) => spin(i, k)), () => nuts.forEach((_, i) => spin(i, 0)))],
+      'all',
+      nuts[0],
+    );
+    void id;
+    nuts.forEach((_, i) => after(i));
+    if (loosen) sfx.clink();
+    else sfx.torque();
+    this.p.job.addMinutes(1);
+    this.p.setClock();
+  }
+
   /** loosen or tighten all bolts of a slot, in any order */
   private async slotBolts(s: Slot, loosen: boolean) {
+    if (this.p.ctx.wrench) {
+      await this.allAtOnce(s.bolts, loosen, (i, k) => spinBolt(s, i, k, loosen), (i) => void (loosen ? boltOut(s, i, true) : 0));
+      return;
+    }
     const left = new Set(s.bolts.map((_, i) => i));
     while (left.size) {
       const targets = [...left].map((i) =>
@@ -465,6 +485,22 @@ export class Repairs {
     const w = p.car.wheel;
     const star = new StarPattern();
     if (!loosen) w.nuts.forEach((n, i) => ((n.visible = true), n.position.copy(w.nutHome[i]).add(V(0.03, 0, 0))));
+    if (p.ctx.wrench) {
+      // the impact wrench spins all five nuts at once
+      await this.allAtOnce(
+        w.nuts,
+        loosen,
+        (i, k) => {
+          w.nuts[i].rotation.x = k * Math.PI * 6 * (loosen ? 1 : -1);
+          w.nuts[i].position.x = w.nutHome[i].x + (loosen ? k : 1 - k) * 0.03;
+        },
+        (i) => {
+          if (loosen) w.nuts[i].visible = false;
+          else w.nuts[i].position.x = w.nutHome[i].x;
+        },
+      );
+      return;
+    }
     while (!star.done) {
       const next = star.next!;
       const left = w.nuts.map((_, i) => i).filter((i) => (loosen ? w.nuts[i].visible : w.nuts[i].position.x > w.nutHome[i].x + 0.001));

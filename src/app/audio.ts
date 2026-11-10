@@ -146,7 +146,9 @@ function noise(dur: number, vol = 0.3, freq = 2000, q = 1, delay = 0, type: Biqu
 }
 
 export const sfx = {
-  tap: () => tone(660, 0.08, 'sine', 0.18, 0, 880),
+  tap: () => tone(660, 0.08, 'sine', 0.16, 0, 880),
+  /** a tap on nothing in particular */
+  miss: () => tone(300, 0.06, 'sine', 0.08, 0, 240),
   pop: () => {
     tone(520, 0.1, 'triangle', 0.22, 0, 1040);
   },
@@ -166,8 +168,8 @@ export const sfx = {
     tone(2250, 0.22, 'sine', 0.07, 0.03);
   },
   thud: () => {
-    tone(110, 0.25, 'sine', 0.5, 0, 55);
-    noise(0.12, 0.25, 400, 1, 0, 'lowpass');
+    tone(110, 0.25, 'sine', 0.34, 0, 55);
+    noise(0.12, 0.2, 400, 1, 0, 'lowpass');
   },
   lift: () => noise(0.6, 0.12, 900, 2, 0, 'bandpass', 0.1),
   hood: () => {
@@ -175,26 +177,26 @@ export const sfx = {
     noise(0.15, 0.1, 1200, 2);
   },
   hoodShut: () => {
-    tone(90, 0.3, 'sine', 0.5, 0, 50);
-    noise(0.1, 0.3, 700, 1, 0, 'lowpass');
+    tone(90, 0.3, 'sine', 0.32, 0, 50);
+    noise(0.1, 0.22, 700, 1, 0, 'lowpass');
   },
   beep: () => tone(1320, 0.12, 'square', 0.08),
   bad: () => {
-    tone(330, 0.18, 'triangle', 0.18, 0, 260);
-    tone(260, 0.25, 'triangle', 0.18, 0.15, 200);
+    tone(330, 0.18, 'triangle', 0.15, 0, 260);
+    tone(260, 0.25, 'triangle', 0.15, 0.15, 200);
   },
   good: () => {
     tone(660, 0.12, 'triangle', 0.18);
     tone(990, 0.2, 'triangle', 0.18, 0.1);
   },
   spark: () => {
-    noise(0.12, 0.35, 6000, 0.7, 0, 'highpass');
+    noise(0.12, 0.26, 6000, 0.7, 0, 'highpass');
     noise(0.06, 0.2, 3000, 2, 0.08);
   },
   /** starter solenoid clicking on a flat battery */
   clicking: (n = 8) => {
     for (let i = 0; i < n; i++) {
-      noise(0.025, 0.4, 2600, 3, i * 0.09);
+      noise(0.025, 0.28, 2600, 3, i * 0.09);
       tone(180, 0.03, 'square', 0.05, i * 0.09);
     }
   },
@@ -219,8 +221,8 @@ export const sfx = {
     f.frequency.value = 420;
     const g = ctx.createGain();
     g.gain.setValueAtTime(0.0001, t);
-    g.gain.exponentialRampToValueAtTime(0.32, t + 0.12);
-    g.gain.exponentialRampToValueAtTime(0.14, t + 1.2);
+    g.gain.exponentialRampToValueAtTime(0.24, t + 0.12);
+    g.gain.exponentialRampToValueAtTime(0.12, t + 1.2);
     o.connect(f).connect(g).connect(master);
     o.start(t);
     lfo.start(t);

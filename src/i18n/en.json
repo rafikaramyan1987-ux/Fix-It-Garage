@@ -10,13 +10,11 @@
   "menu.jobOf": "Next: job {n} of {total}",
   "menu.freeplay": "Next: job {n} (free play)",
   "menu.dailyDone": "Done today",
-
   "common.close": "Close",
   "common.back": "Back",
   "common.cancel": "Cancel",
   "common.on": "On",
   "common.off": "Off",
-
   "settings.title": "Settings",
   "settings.music": "Music",
   "settings.sfx": "Sound effects",
@@ -26,14 +24,12 @@
   "settings.resetConfirm": "Delete all money, upgrades and progress? This cannot be undone.",
   "settings.resetYes": "Yes, reset",
   "settings.resetDone": "Progress reset",
-
   "pause.title": "Paused",
   "pause.resume": "Resume",
   "pause.settings": "Settings",
   "pause.menu": "Main menu",
   "pause.leave": "Leave this job? The car goes back to the queue.",
   "pause.leaveYes": "Leave job",
-
   "hud.job": "Job #{n}",
   "hud.daily": "Daily job",
   "hud.target": "Target {time}",
@@ -43,12 +39,11 @@
   "hud.hide": "Hide ▴",
   "hud.twoFaults": "Two problems!",
   "hud.tricky": "Tricky customer",
-
+  "hud.reward": "Reward ${pay} + time bonus ${bonus}",
   "mod.misleading": "Sure they know what's wrong. Trust your clues, not their guess!",
   "mod.rush": "In a hurry: tight target time, double time bonus.",
   "mod.picky": "Picky: tips well, but only for a 3-star job.",
   "mod.vip": "VIP: pays double, expects quick, careful work.",
-
   "tool.min": "+{n} min",
   "tool.locked": "Garage",
   "tool.lockedToast": "Buy the {tool} in the Garage",
@@ -69,13 +64,11 @@
   "tool.exhaust.ok": "Exhaust gases are clean",
   "tool.na.obd": "No OBD port: this classic is older than on-board diagnostics",
   "tool.na.exhaust": "Electric car: there is no exhaust",
-
   "action.hint": "Hint",
   "action.repair": "Repair",
   "action.repairSub": "pick a part",
   "action.test": "Test",
   "action.testSub": "drive",
-
   "v.click": "Click-click",
   "v.cranks": "Cranks…",
   "v.squeal": "Squeal",
@@ -97,7 +90,6 @@
   "v.nocharge": "No charging",
   "v.ok": "OK",
   "v.na": "N/A",
-
   "finding.low_volt": "Battery: 11.2 V, too weak to crank",
   "finding.not_charging": "Engine running but only 12.1 V: not charging",
   "finding.p0562": "Code P0562: system voltage low",
@@ -139,7 +131,6 @@
   "finding.low_pressure": "One tyre at 1.2 bar, the others 2.3",
   "finding.rich": "Too much CO: engine runs rich",
   "finding.high_hc": "Lots of unburnt fuel (HC)",
-
   "fault.dead-battery.name": "Worn-out battery",
   "fault.dead-battery.symptom": "Won't start, just a clicking sound when I turn the key.",
   "fault.dead-battery.book": "Clicking + low voltage = worn battery. Replace it: (−) off first, (+) on first.",
@@ -204,7 +195,6 @@
   "fault.scratch.name": "Scratched paint",
   "fault.scratch.symptom": "And could you fix this ugly scratch on the door?",
   "fault.scratch.book": "Sand it, spray it, polish it.",
-
   "part.battery": "Battery",
   "part.alternator": "Alternator",
   "part.starter": "Starter motor",
@@ -225,12 +215,10 @@
   "part.coolant": "Coolant",
   "part.chargeport": "Charging module",
   "part.paint": "Paint kit",
-
   "cat.bay": "Engine bay",
   "cat.wheels": "Wheels & brakes",
   "cat.under": "Underside",
   "cat.fluids": "Fluids & paint",
-
   "parts.title": "Which part is faulty?",
   "parts.desc": "Order the part your clues point to. Wrong parts are paid by the garage.",
   "parts.order": "Order · ${price}",
@@ -238,7 +226,6 @@
   "parts.delivered": "{part} delivered!",
   "parts.evOnly": "Electric cars only",
   "parts.fuelOnly": "Not on electric cars",
-
   "car.hatchback": "Hatchback",
   "car.sedan": "Sedan",
   "car.van": "Van",
@@ -246,7 +233,6 @@
   "car.sports": "Sports car",
   "car.classic": "Classic car",
   "car.electric": "Electric car",
-
   "prompt.diagnose": "What's wrong? <b>Use a tool</b> to find clues",
   "prompt.diagnoseMore": "Check more, or tap <b>Repair</b> when you know the faulty part",
   "prompt.fixedMore": "Repair done. <b>Test</b> it, or fix the next problem",
@@ -286,17 +272,14 @@
   "prompt.polish": "<b>Rub</b> to polish it shiny",
   "prompt.fitting": "Fitting the {part}…",
   "prompt.test": "Start it up to see if it worked",
-
   "readout.problem": "Problem found",
   "readout.fine": "Looks fine",
   "readout.na": "Can't use it here",
   "readout.ok": "Got it",
-
   "screen.ready": "READY",
   "screen.volts": "VOLTS",
   "screen.weak": "WEAK",
   "screen.good": "GOOD",
-
   "toast.negFirst": "Zap! Always take the (−) off first",
   "toast.posFirst": "Zap! Always connect (+) first",
   "toast.redPos": "Red goes on (+)!",
@@ -314,13 +297,12 @@
   "toast.noMoney": "Not enough money yet",
   "toast.newCar": "New car type unlocked: {car}",
   "toast.freePart": "Free part!",
-
+  "toast.garageHint": "You can afford an upgrade! Open the Garage from the menu.",
   "ad.notice": "Optional: watch a short ad to get a bonus.",
   "ad.hint": "Watch an ad: get a hint",
   "ad.double": "Watch an ad: double payment",
   "ad.free": "Watch an ad: get this part free",
   "ad.tag": "AD",
-
   "pay.title": "Job done!",
   "pay.thanks1": "Runs like new! Thank you!",
   "pay.thanks2": "You're a lifesaver!",
@@ -338,7 +320,6 @@
   "pay.note.slow": "Over the target time",
   "pay.note.picky": "No tip: the picky customer wanted 3 stars",
   "pay.careerDone": "You finished all 40 career jobs! Free play continues with new customers.",
-
   "garage.title": "Garage",
   "garage.desc": "Spend your earnings on tools, speed and a cozier workshop.",
   "garage.owned": "Owned",
@@ -363,19 +344,16 @@
   "upgrade.neon.desc": "Decoration: customers tip 5% more.",
   "upgrade.lounge.name": "Waiting lounge",
   "upgrade.lounge.desc": "Decoration: a sofa and coffee, customers tip 5% more.",
-
   "book.title": "Repair book",
   "book.desc": "Every fault you fix is written down here with its clues.",
   "book.locked": "Not discovered yet",
   "book.clues": "Clues",
   "book.fix": "Fix",
   "book.count": "{n} of {total} discovered",
-
   "daily.title": "Daily job",
   "daily.desc": "A new customer every day. Pays double!",
   "daily.play": "Start daily job",
   "daily.done": "Done for today. Come back tomorrow!",
-
   "ach.title": "Achievements",
   "ach.first_fix.name": "First fix",
   "ach.first_fix.desc": "Finish your first job.",
@@ -403,15 +381,21 @@
   "ach.all_upgrades.desc": "Buy every upgrade.",
   "ach.rich.name": "Money maker",
   "ach.rich.desc": "Earn $1000 in total.",
-
   "tut.skip": "Skip tutorial",
-  "tut.ticket": "A customer! Their ticket says what feels wrong.",
-  "tut.tool": "Clicking sounds like a battery problem. Tap the <b>battery tester</b>.",
-  "tut.leads": "Clip the leads onto the battery terminals.",
-  "tut.clue": "11.2 V is too weak. Clues are saved on the ticket.",
-  "tut.repair": "You know the faulty part: tap <b>Repair</b>.",
-  "tut.part": "Order a new <b>battery</b>.",
-  "tut.swap": "Follow the arrow: each step is a short tap or hold.",
-  "tut.test": "Now tap <b>Test</b> to start the car.",
-  "tut.done": "Great job! Every car is a new puzzle. Have fun!"
+  "tut.ticket": "Read what the customer says.",
+  "tut.tool": "Tap the <b>battery tester</b>.",
+  "tut.leads": "Tap the battery terminals.",
+  "tut.clue": "11.2 V: the battery is weak.",
+  "tut.repair": "Tap <b>Repair</b>.",
+  "tut.part": "Order a <b>battery</b>.",
+  "tut.swap": "Follow the arrow.",
+  "tut.test": "Tap <b>Test</b>.",
+  "tut.done": "Well done! Have fun!",
+  "kb.title": "Keyboard",
+  "kb.tools": "Use a tool",
+  "kb.repair": "Repair",
+  "kb.test": "Test drive",
+  "kb.hint": "Hint",
+  "kb.act": "Next step / confirm",
+  "kb.pause": "Pause"
 }

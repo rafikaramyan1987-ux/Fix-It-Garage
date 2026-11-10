@@ -1,8 +1,8 @@
 import { expect, test } from '@playwright/test';
 import { FAULT_PART, jobFaults, open, richSave, saved } from './helpers';
 
-test('boots to the main menu, no errors, no ads anywhere in the web build', async ({ page }) => {
-  const { d, errors } = await open(page);
+test('a returning player boots to the main menu; no errors, no ads anywhere in the web build', async ({ page }) => {
+  const { d, errors } = await open(page, '', richSave());
   await d.tick(0.3);
   for (const a of ['play', 'garage', 'book', 'daily', 'settings', 'achievements']) await expect(page.locator(`[data-action=${a}]`)).toBeVisible();
   await d.click('[data-action=play]');
@@ -12,12 +12,14 @@ test('boots to the main menu, no errors, no ads anywhere in the web build', asyn
   expect(errors).toEqual([]);
 });
 
-test('first job with the tutorial: battery tester, battery swap, test drive, payment, next customer', async ({ page }) => {
+test('a new player lands straight in the first job; tutorial: battery tester, battery swap, test drive, payment', async ({ page }) => {
   const { d, errors } = await open(page);
-  await d.startShift();
-  await d.until(() => !!document.querySelector('.toolbar'), 40);
+  await d.until(() => !!document.querySelector('.toolbar'), 15);
+  await expect(page.locator('[data-action=play]')).toHaveCount(0);
   await expect(page.locator('.tut')).toBeVisible();
   await expect(page.locator('.hand:not(.hidden)')).toBeVisible();
+  await expect(page.locator('[data-tool=tester].tut-glow')).toBeVisible();
+  await expect(page.locator('.ticket .reward')).toContainText('$');
   await d.useTool('tester', 0.2);
   await expect(page.locator('.clues li.bad')).toHaveCount(1);
   await d.order('battery');
@@ -97,9 +99,12 @@ test('settings: language, music, sound and reset are saved', async ({ page }) =>
   expect(s.settings.lang).toBe('fr');
   await d.click('[data-action=close]');
   await expect(page.locator('[data-action=play]')).toContainText('Jouer');
+  // after a reset the player is new again: a reload goes straight to the first job, still in French
   await page.reload();
   await page.waitForFunction(() => window.__ready === true);
-  await expect(page.locator('[data-action=play]')).toContainText('Jouer');
+  await d.until(() => !!document.querySelector('.toolbar'), 30);
+  expect(await page.evaluate(() => document.documentElement.lang)).toBe('fr');
+  await expect(page.locator('[data-tool=repair]')).toContainText('Réparer');
 });
 
 test('garage: buying the tyre gauge unlocks the tool and shows it in the garage', async ({ page }) => {
@@ -139,4 +144,41 @@ test('daily job: plays once per day at double pay', async ({ page }) => {
   expect(s.career).toBe(10);
   await d.click('[data-action=daily]');
   await expect(page.locator('.screen.daily .done')).toBeVisible();
+});
+
+test('keyboard (optional): number keys pick tools, Space acts, Enter confirms, R repairs, P pauses, Escape does nothing', async ({ page }) => {
+  const { d } = await open(page, '', richSave());
+  await d.tick(0.3);
+  await page.keyboard.press('Enter');
+  await d.until(() => !!document.querySelector('.toolbar'), 40);
+  await page.keyboard.press('Digit1');
+  for (let i = 0; i < 2; i++) {
+    await d.until(() => !!window.__game!.play.expected, 30);
+    await d.tick(0.3);
+    await page.keyboard.press('Space');
+  }
+  await d.until(() => !!document.querySelector('.readout'), 30);
+  await d.tick(0.4);
+  await page.keyboard.press('Enter');
+  await d.until(() => !!document.querySelector('.toolbar'), 30);
+  await expect(page.locator('.clues li')).toHaveCount(1);
+  await page.keyboard.press('KeyP');
+  await expect(page.locator('.screen.pause')).toBeVisible();
+  await page.keyboard.press('Escape');
+  await expect(page.locator('.screen.pause')).toBeVisible();
+  await page.keyboard.press('KeyP');
+  await expect(page.locator('.screen.pause')).toHaveCount(0);
+  await page.keyboard.press('KeyR');
+  await expect(page.locator('.parts-sheet')).toBeVisible();
+});
+
+test('impact wrench: one hold turns all the wheel nuts at once', async ({ page }) => {
+  const { d } = await open(page, '&job=3', richSave({ career: 3, upgrades: ['wrench'] }));
+  await d.until(() => !!document.querySelector('.toolbar'), 40);
+  await d.order('tyre');
+  const ids: string[] = [];
+  d.onStep = async (id) => void ids.push(id);
+  await d.repair({ beat: 0.05 });
+  expect(ids.filter((i) => i.startsWith('nut'))).toEqual([]);
+  expect(ids.filter((i) => i === 'all').length).toBe(2);
 });

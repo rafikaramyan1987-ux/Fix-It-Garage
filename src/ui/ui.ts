@@ -85,6 +85,36 @@ export class UI {
     root.append(this.ringEl, this.markerEl, this.handEl);
   }
 
+  /** small keyboard-shortcut overlay (desktop pointers only): a corner button that opens the list */
+  keysHelp(withHint: boolean) {
+    if (typeof matchMedia === 'undefined' || !matchMedia('(hover: hover) and (pointer: fine)').matches) return;
+    this.root.querySelector('.kbtn')?.remove();
+    this.root.querySelector('.kpanel')?.remove();
+    const btn = el('button', 'kbtn', '⌨');
+    btn.setAttribute('aria-label', t('kb.title'));
+    btn.dataset.action = 'keys';
+    const rows: [string, string][] = [
+      ['1–7', t('kb.tools')],
+      ['R', t('kb.repair')],
+      ['T', t('kb.test')],
+      ...(withHint ? ([['H', t('kb.hint')]] as [string, string][]) : []),
+      ['␣ / ↵', t('kb.act')],
+      ['P', t('kb.pause')],
+    ];
+    const panel = el('div', 'kpanel hidden', `<h4>${esc(t('kb.title'))}</h4>${rows.map(([k, v]) => `<div class="krow"><kbd>${k}</kbd><span class="fit">${esc(v)}</span></div>`).join('')}`);
+    btn.addEventListener('click', () => panel.classList.toggle('hidden'));
+    this.root.append(btn, panel);
+  }
+
+  /** a soft ring where the player tapped (instant feedback) */
+  ripple(x: number, y: number, miss = false) {
+    const r = el('div', `ripple${miss ? ' miss' : ''}`);
+    r.style.left = `${x}px`;
+    r.style.top = `${y}px`;
+    this.root.append(r);
+    clock.later(0.5, () => r.remove());
+  }
+
   showHud(on: boolean) {
     this.hud.classList.toggle('hidden', !on);
   }
@@ -120,7 +150,7 @@ export class UI {
     const tk = el(
       'div',
       `ticket${job.mod ? ' is-tricky' : ''}`,
-      `<button class="toggle fit">${esc(t('hud.show'))}</button><div class="head"><div class="avatar">${avatar(c.hair, c.skin, c.shirt)}</div><div class="meta"><div class="who">${esc(c.name)}</div><div class="car fit">${esc(t(`car.${job.car}`))} · ${esc(title)}</div></div></div>
+      `<button class="toggle fit">${esc(t('hud.show'))}</button><div class="head"><div class="avatar">${avatar(c.hair, c.skin, c.shirt)}</div><div class="meta"><div class="who">${esc(c.name)}</div><div class="car fit">${esc(t(`car.${job.car}`))} · ${esc(title)}</div><div class="reward fit">${esc(t('hud.reward', { pay: job.labor, bonus: job.timeBonus }))}</div></div></div>
       ${tricky}<div class="quote">${symptoms.map((s) => `“${esc(s)}”`).join('<br>')} ${two}</div><div class="clues-wrap"><h4><span>${esc(t('hud.clues'))}</span><span>${esc(t('hud.target', { time: fmtTime(job.targetMinutes) }))}</span></h4><ul class="clues"><li class="empty">${esc(t('hud.noClues'))}</li></ul></div>`,
     );
     tk.querySelector('.toggle')!.addEventListener('click', () => this.compactTicket(!tk.classList.contains('compact')));

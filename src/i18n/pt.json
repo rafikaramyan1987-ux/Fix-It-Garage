@@ -43,6 +43,7 @@
   "hud.hide": "Ocultar ▴",
   "hud.twoFaults": "Dois problemas!",
   "hud.tricky": "Cliente difícil",
+  "hud.reward": "Recompensa ${pay} + bônus de tempo ${bonus}",
 
   "mod.misleading": "Ele tem certeza do defeito. Confie nas pistas, não no palpite dele!",
   "mod.rush": "Com pressa: tempo meta curto, bônus de tempo em dobro.",
@@ -314,6 +315,7 @@
   "toast.noMoney": "Ainda sem dinheiro suficiente",
   "toast.newCar": "Novo tipo de carro liberado: {car}",
   "toast.freePart": "Peça grátis!",
+  "toast.garageHint": "Você já pode comprar uma melhoria! Abra a Garagem pelo menu.",
 
   "ad.notice": "Opcional: assista a um anúncio curto para ganhar um bônus.",
   "ad.hint": "Veja um anúncio: ganhe uma dica",
@@ -405,13 +407,20 @@
   "ach.rich.desc": "Ganhe $1000 no total.",
 
   "tut.skip": "Pular tutorial",
-  "tut.ticket": "Um cliente! A ficha dele diz o que parece errado.",
-  "tut.tool": "Cliques parecem problema na bateria. Toque no <b>testador de bateria</b>.",
-  "tut.leads": "Prenda os cabos nos terminais da bateria.",
-  "tut.clue": "11.2 V é muito fraco. As pistas ficam salvas na ficha.",
-  "tut.repair": "Você já sabe a peça com defeito: toque em <b>Reparar</b>.",
-  "tut.part": "Peça uma <b>bateria</b> nova.",
-  "tut.swap": "Siga a seta: cada passo é um toque curto ou segurar.",
-  "tut.test": "Agora toque em <b>Testar</b> para ligar o carro.",
-  "tut.done": "Ótimo trabalho! Cada carro é um novo quebra-cabeça. Divirta-se!"
+  "tut.ticket": "Leia o que o cliente diz.",
+  "tut.tool": "Toque no <b>Testador bat.</b>",
+  "tut.leads": "Toque nos terminais da bateria.",
+  "tut.clue": "11.2 V: a bateria está fraca.",
+  "tut.repair": "Toque em <b>Reparar</b>.",
+  "tut.part": "Peça uma <b>bateria</b>.",
+  "tut.swap": "Siga a seta.",
+  "tut.test": "Toque em <b>Testar</b>.",
+  "tut.done": "Muito bem! Divirta-se!",
+  "kb.title": "Teclado",
+  "kb.tools": "Usar ferramenta",
+  "kb.repair": "Reparar",
+  "kb.test": "Test drive",
+  "kb.hint": "Dica",
+  "kb.act": "Próximo passo / confirmar",
+  "kb.pause": "Pausa"
 }

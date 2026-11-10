@@ -43,6 +43,7 @@
   "hud.hide": "Chiudi ▴",
   "hud.twoFaults": "Due problemi!",
   "hud.tricky": "Cliente difficile",
+  "hud.reward": "Ricompensa ${pay} + bonus tempo ${bonus}",
 
   "mod.misleading": "Sa di sicuro cosa non va. Fidati degli indizi, non delle sue idee!",
   "mod.rush": "Ha fretta: tempo obiettivo stretto, bonus tempo doppio.",
@@ -314,6 +315,7 @@
   "toast.noMoney": "Non hai ancora abbastanza soldi",
   "toast.newCar": "Nuovo tipo di auto sbloccato: {car}",
   "toast.freePart": "Pezzo gratis!",
+  "toast.garageHint": "Puoi permetterti un potenziamento! Apri il Garage dal menu.",
 
   "ad.notice": "Facoltativo: guarda un breve annuncio per ottenere un bonus.",
   "ad.hint": "Guarda un annuncio: ricevi un aiuto",
@@ -405,13 +407,20 @@
   "ach.rich.desc": "Guadagna $1000 in totale.",
 
   "tut.skip": "Salta tutorial",
-  "tut.ticket": "Un cliente! Il suo foglio dice cosa non va.",
-  "tut.tool": "I clic sembrano un problema di batteria. Tocca il <b>tester batteria</b>.",
-  "tut.leads": "Attacca i cavi ai morsetti della batteria.",
-  "tut.clue": "11.2 V sono troppo pochi. Gli indizi vengono salvati sul foglio.",
-  "tut.repair": "Conosci il pezzo guasto: tocca <b>Ripara</b>.",
-  "tut.part": "Ordina una <b>batteria</b> nuova.",
-  "tut.swap": "Segui la freccia: ogni passo è un breve tocco o una pressione lunga.",
-  "tut.test": "Ora tocca <b>Prova</b> per avviare l'auto.",
-  "tut.done": "Ottimo lavoro! Ogni auto è un nuovo rompicapo. Buon divertimento!"
+  "tut.ticket": "Leggi cosa dice il cliente.",
+  "tut.tool": "Tocca il <b>Tester batt.</b>",
+  "tut.leads": "Tocca i morsetti della batteria.",
+  "tut.clue": "11.2 V: la batteria è scarica.",
+  "tut.repair": "Tocca <b>Ripara</b>.",
+  "tut.part": "Ordina una <b>batteria</b>.",
+  "tut.swap": "Segui la freccia.",
+  "tut.test": "Tocca <b>Prova</b>.",
+  "tut.done": "Ottimo lavoro! Buon divertimento!",
+  "kb.title": "Tastiera",
+  "kb.tools": "Usa uno strumento",
+  "kb.repair": "Ripara",
+  "kb.test": "Prova su strada",
+  "kb.hint": "Aiuto",
+  "kb.act": "Passo successivo / conferma",
+  "kb.pause": "Pausa"
 }
