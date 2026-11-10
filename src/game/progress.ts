@@ -65,6 +65,8 @@ export interface KeyValueStore {
 }
 
 function local(): KeyValueStore | null {
+  // Playgama: progress goes only through Bridge Storage; without Bridge the game plays on with its in-memory save
+  if (__PLATFORM__ === 'playgama') return null;
   try {
     return window.localStorage;
   } catch {

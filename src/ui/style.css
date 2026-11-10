@@ -446,3 +446,29 @@ svg { display: block; }
 .skipchip.fast { background: rgba(31, 157, 145, 0.85); }
 .skipchip.fast .ff { animation: ffpulse 0.4s ease-in-out infinite alternate; }
 @keyframes ffpulse { from { opacity: 0.5; } to { opacity: 1; } }
+
+/* web + Playgama builds (main.ts adds .fit-toolbar): in a landscape frame narrower than the toolbar (e.g. an
+   iframe of 640x480) the tool tiles shrink instead of pushing Repair / Test out of the screen */
+@media (orientation: landscape) {
+  .fit-toolbar .toolbar { left: 12px; right: 12px; width: fit-content; margin: 0 auto; transform: none; animation-name: riseP; }
+  .fit-toolbar .toolbar .tools, .fit-toolbar .toolbar .acts { min-width: 0; }
+  .fit-toolbar .toolbar .tools { flex: 0 1 auto; }
+  .fit-toolbar .toolbar .acts { flex: 0 0 auto; }
+  .fit-toolbar .tool { flex: 0 1 84px; }
+}
+@media (orientation: landscape) and (max-width: 940px) {
+  .fit-toolbar .toolbar { gap: 6px; padding: 6px; }
+  .fit-toolbar .toolbar .tools, .fit-toolbar .toolbar .acts { gap: 5px; }
+  .fit-toolbar .toolbar .acts { padding-left: 6px; }
+  .fit-toolbar .tool, .fit-toolbar .act { padding: 4px 2px 3px; border-radius: 13px; }
+  .fit-toolbar .act { width: 76px; }
+  .fit-toolbar .act.hint { width: 84px; }
+  .fit-toolbar .tool .ic, .fit-toolbar .act .ic { width: 30px; height: 30px; }
+  .fit-toolbar .tool .nm, .fit-toolbar .act .nm { font-size: 11px; }
+  .fit-toolbar .tool .cost, .fit-toolbar .act .cost { font-size: 9.5px; }
+}
+/* …and the keyboard-help button moves above the toolbar where the toolbar reaches the left edge */
+@media (orientation: landscape) and (max-width: 1180px) {
+  .fit-toolbar .kbtn { bottom: calc(128px + var(--safe-b)); }
+  .fit-toolbar .kpanel { bottom: calc(178px + var(--safe-b)); }
+}

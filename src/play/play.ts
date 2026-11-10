@@ -23,8 +23,11 @@ import { Repairs } from './repairs';
 
 export const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
 export const LIFT_UP = 1.3;
-/** rewarded ads exist only in the portal builds (never in the plain web build) */
-export const ADS = __PLATFORM__ !== 'web';
+/**
+ * rewarded ads exist only in the portal builds (never in the plain web build); in the Playgama build only where
+ * Bridge supports them (otherwise the rewarded buttons are hidden)
+ */
+export const ads = () => __PLATFORM__ !== 'web' && (__PLATFORM__ !== 'playgama' || sdk.available);
 
 export class Play {
   readonly input: Input;
@@ -84,8 +87,9 @@ export class Play {
 
   /** the language: the player's choice, else the portal's / browser's, else English */
   static chooseLang(save: SaveData): Lang {
-    const portal = __PLATFORM__ === 'gamepix' || __PLATFORM__ === 'crazygames' ? sdk.locale() : null;
-    const nav = typeof navigator !== 'undefined' ? [...(navigator.languages ?? []), navigator.language] : [];
+    const portal = __PLATFORM__ === 'gamepix' || __PLATFORM__ === 'crazygames' || __PLATFORM__ === 'playgama' ? sdk.locale() : null;
+    // Playgama: the language comes only from Bridge's platform.language (or the player's own choice), else English
+    const nav = __PLATFORM__ !== 'playgama' && typeof navigator !== 'undefined' ? [...(navigator.languages ?? []), navigator.language] : [];
     return pickLang(save.settings.lang, portal, ...nav);
   }
 
@@ -345,7 +349,7 @@ export class Play {
     this.stage.rig.snap(this.shots().title);
     sdk.loadingStop();
     await sdk.ready?.();
-    this.ui.keysHelp(ADS);
+    this.ui.keysHelp(ads());
     // a brand-new player lands straight in the first job: the tutorial happens inside gameplay
     const cover = this.ui.root.classList.contains('cover-mode');
     if (!cover && this.save.stats.jobs === 0 && this.save.career === 1 && !this.save.tutorialDone && !this.firstRunDone) {
@@ -447,6 +451,8 @@ export class Play {
       if (c === 'menu' && !(await confirm(this.ui.root, t('pause.leave'), t('pause.leaveYes')))) continue;
       this.paused = false;
       if (c === 'menu') {
+        // Playgama: Bridge's level_failed (the job was left unfinished)
+        if (__PLATFORM__ === 'playgama') sdk.levelEnd?.(false);
         this.abandon();
         return;
       }
@@ -472,7 +478,7 @@ export class Play {
   // ---------- rewarded ads ----------
   /** a rewarded ad the player asked for; true only when it really completed */
   async rewarded(label: string) {
-    if (!ADS) return false;
+    if (!ads()) return false;
     if (!this.adNoticeShown) {
       const ok = await adNotice(this.ui.root, label);
       if (!ok) return false;
@@ -539,7 +545,7 @@ export class Play {
     sdk.gameplayStart();
     this.ui.showMoney(false);
     this.ui.showHud(true);
-    this.ui.keysHelp(ADS && !this.job.hintUsed);
+    this.ui.keysHelp(ads() && !this.job.hintUsed);
     this.setClock();
     this.stage.rig.snap(this.shots().garage);
     await this.skippable(this.driveIn());
@@ -593,7 +599,7 @@ export class Play {
           sfx.bad();
           this.ui.toast(t('tool.lockedToast', { tool: t(`tool.${tt}`) }), 'info');
         },
-        hint: ADS && !j.hintUsed,
+        hint: ads() && !j.hintUsed,
         onHint: () => res({ k: 'hint' }),
         onRepair: () => res({ k: 'repair' }),
         onTest: () => res({ k: 'test' }),
@@ -631,7 +637,7 @@ export class Play {
       return false;
     }
     if (choice.k === 'test') return this.testDrive();
-    const sheet = this.ui.partsSheet(this.save.money, j.def.car, ADS, this.partsTab());
+    const sheet = this.ui.partsSheet(this.save.money, j.def.car, ads(), this.partsTab());
     if (this.tutOn) this.tutorial('part', '[data-part=battery]');
     const pick = await sheet;
     if (this.tut) this.tut.close();
@@ -951,6 +957,8 @@ export class Play {
     sfx.engineStop();
     this.engineOn = false;
     sdk.gameplayStop();
+    // Playgama: Bridge's level_completed (the car is fixed and paid)
+    if (__PLATFORM__ === 'playgama') sdk.levelEnd?.(true);
     const j = this.job;
     const p = j.payout();
     this.phase = 'payment';
@@ -962,7 +970,7 @@ export class Play {
     const before = this.save.career;
     const thanks = `pay.thanks${1 + ((j.def.n + j.minutes) % 4)}`;
     const extra = before === CAREER_LENGTH && !j.def.daily ? t('pay.careerDone') : '';
-    const choice = await this.ui.payment(p, j.def.customer.name, thanks, ADS, (i) => sfx.star(i), extra);
+    const choice = await this.ui.payment(p, j.def.customer.name, thanks, ads(), (i) => sfx.star(i), extra);
     let total = p.total;
     if (choice === 'double' && (await this.rewarded(t('ad.double')))) total *= 2;
     const mid = { x: window.innerWidth / 2, y: window.innerHeight / 2 };

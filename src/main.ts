@@ -110,6 +110,8 @@ async function boot() {
     },
   };
   if (params.get('view') === 'cover') document.getElementById('ui')!.classList.add('cover-mode');
+  // open-portal web and Playgama builds: the toolbar shrinks to fit narrow landscape frames (style.css `.fit-toolbar`)
+  if (__PLATFORM__ === 'web' || __PLATFORM__ === 'playgama') document.getElementById('ui')!.classList.add('fit-toolbar');
   void play.start(params.has('job') ? Number(params.get('job')) : null);
   tick(0);
   progress(1);
@@ -117,6 +119,8 @@ async function boot() {
   bootEl.style.opacity = '0';
   if (capture) bootEl.remove();
   else setTimeout(() => bootEl.remove(), 400);
+  // Playgama: Bridge's game_ready once the loading screen has faded out and the player can play
+  if (__PLATFORM__ === 'playgama') setTimeout(() => sdk.gameReady?.(), 500);
   window.__ready = true;
   if (capture) return;
   let last = performance.now();

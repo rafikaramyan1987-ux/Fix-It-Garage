@@ -3,7 +3,7 @@
  * One implementation per portal, chosen at build time (`__PLATFORM__`, see vite.config.ts).
  */
 
-export type PlatformName = 'crazygames' | 'gd' | 'web' | 'gamepix';
+export type PlatformName = 'crazygames' | 'gd' | 'web' | 'gamepix' | 'playgama';
 
 declare global {
   /** the build target, a string literal at build time (vite.config.ts `define`), so other platforms' branches are dropped */
@@ -53,6 +53,10 @@ export interface Platform {
   ready?(): Promise<void>;
   /** GamePix only: a sad moment (job failed) */
   sadMoment?(name: string): void;
+  /** Playgama only: the loading screen is gone and the player can play (Bridge `game_ready`) */
+  gameReady?(): void;
+  /** Playgama only: a job ended (Bridge `level_completed` / `level_failed`) */
+  levelEnd?(won: boolean): void;
 }
 
 /** at most one interstitial per ~2 minutes */
