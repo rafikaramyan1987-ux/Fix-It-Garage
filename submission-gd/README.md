@@ -1,6 +1,6 @@
 # Fix It Garage — GameDistribution submission
 
-- **Build:** `fix-it-garage-gd-v0.1.0.zip` (`npm run build:gd`): `index.html` at the root of the zip, assets in `assets/`,
+- **Build:** `fix-it-garage-gd-v1.0.0.zip` (`npm run build:gd`): `index.html` at the root of the zip, assets in `assets/`,
   relative paths only. Loads the GameDistribution HTML5 SDK at runtime (interstitials only between jobs, at most one per
   2 minutes; rewarded ads only after SDK_REWARDED_WATCH_COMPLETE). Language from the browser.
 - **Game ID:** set `GD_GAME_ID` in `src/app/platform/gd.ts` to the ID GameDistribution assigns, then rebuild (placeholder for now).

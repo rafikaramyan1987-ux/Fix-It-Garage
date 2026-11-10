@@ -13,7 +13,7 @@ Tap a tool to find clues: each one costs workshop time. When you know the faulty
 simulation, car, mechanic, repair, garage, puzzle, casual, 3d, family, kids, mobile, html5
 
 ## Files
-- `fix-it-garage-crazygames-v0.1.0.zip` — the CrazyGames build (`npm run build`), `index.html` at the root, relative paths only.
+- `fix-it-garage-crazygames-v1.0.0.zip` — the CrazyGames build (`npm run build`), `index.html` at the root, relative paths only.
   Uses the CrazyGames SDK v3: gameplayStart/Stop, loadingStart/Stop, happytime, midgame ads only between jobs
   (at most one per 2 minutes, never during a repair), rewarded ads only from buttons the player taps (hint, free spare
   part, double payment), granted only when the ad completed; 8 s timeout, then "No ad available right now, try later"
