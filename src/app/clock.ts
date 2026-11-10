@@ -19,11 +19,14 @@ export const ease = {
 
 class Clock {
   t = 0;
+  /** fast-forward factor (a tap during a skippable wait speeds the game up) */
+  scale = 1;
   private tasks: Task[] = [];
   private tweens: Tw[] = [];
   private frameFns = new Set<(dt: number, t: number) => void>();
 
   update(dt: number) {
+    dt *= this.scale;
     this.t += dt;
     const due = this.tasks.filter((x) => x.at <= this.t);
     if (due.length) this.tasks = this.tasks.filter((x) => x.at > this.t);

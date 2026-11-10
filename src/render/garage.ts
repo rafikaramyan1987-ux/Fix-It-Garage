@@ -14,6 +14,29 @@ export interface Lift {
   /** control box buttons: raise (green) / lower (red) */
   up: THREE.Object3D;
   down: THREE.Object3D;
+  /** the two posts (with their own materials, so they can fade out of the way of the camera) */
+  posts: { x: number; mat: THREE.MeshStandardMaterial }[];
+}
+
+/** fade a lift post that stands between the camera and what it looks at (seen from above: post vs. sight line) */
+export function fadePosts(lift: Lift, cam: THREE.Vector3, look: THREE.Vector3, dt: number) {
+  const dx = look.x - cam.x;
+  const dz = look.z - cam.z;
+  const len2 = dx * dx + dz * dz || 1;
+  for (const p of lift.posts) {
+    const k = Math.max(0, Math.min(1, ((p.x - cam.x) * dx + (0 - cam.z) * dz) / len2));
+    const d = Math.hypot(cam.x + dx * k - p.x, cam.z + dz * k);
+    const block = k > 0.02 && k < 0.92 && d < 0.32;
+    const want = block ? 0.15 : 1;
+    const m = p.mat;
+    m.opacity += (want - m.opacity) * Math.min(1, dt * 10);
+    const see = m.opacity < 0.99;
+    if (m.transparent !== see) {
+      m.transparent = see;
+      m.depthWrite = !see;
+      m.needsUpdate = true;
+    }
+  }
 }
 
 export interface Garage {
@@ -157,11 +180,14 @@ function lift(): Lift {
   const hz = new THREE.MeshStandardMaterial({ map: hazard(), roughness: 0.6 });
   const carriage = new THREE.Group();
   const arms: THREE.Object3D[] = [];
+  const posts: Lift['posts'] = [];
   for (const s of [-1, 1]) {
     const x = s * 1.32;
     const base = rbox(0.5, 0.06, 0.5, hz, 0.02);
     at(base, x, 0.03, 0);
-    const post = rbox(0.24, 2.7, 0.3, blue, 0.04);
+    const pm = blue.clone();
+    posts.push({ x, mat: pm });
+    const post = rbox(0.24, 2.7, 0.3, pm, 0.04);
     at(post, x, 1.38, 0);
     const cap = rbox(0.3, 0.1, 0.36, dark, 0.03);
     at(cap, x, 2.76, 0);
@@ -199,7 +225,7 @@ function lift(): Lift {
   g.add(ctrl, btn, btn2);
   g.add(carriage);
   shade(g);
-  return { group: g, carriage, arms, up: btn, down: btn2 };
+  return { group: g, carriage, arms, up: btn, down: btn2, posts };
 }
 
 function bench(root: THREE.Group) {
@@ -484,8 +510,8 @@ function decor(root: THREE.Group) {
   root.add(at(blob(0.9, 0.9, 0.55), 6.2, 0, -2.4));
   // cones
   for (const [x, z] of [
-    [1.2, 3.6],
-    [-1.9, 3.3],
+    [-3.1, 2.4],
+    [-3.5, 2.9],
   ]) {
     const c = group(cyl(0.02, 0.15, 0.42, mat('#ff7a2f', 0.5), 16), at(cyl(0.085, 0.11, 0.08, mat('#ffffff', 0.5), 16), 0, 0.02, 0), at(rbox(0.36, 0.04, 0.36, mat('#ff7a2f', 0.5), 0.015), 0, -0.21, 0));
     shade(c);

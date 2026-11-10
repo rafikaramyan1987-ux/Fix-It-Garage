@@ -7,12 +7,13 @@ import { sfx, setMusic, setMuted, setSfx, unlockAudio } from '../app/audio';
 import { clock, ease, lerp } from '../app/clock';
 import { Input } from '../app/input';
 import { sdk } from '../app/sdk';
-import { BASE_TOOLS, CARS, CAR_TYPES, FAULTS, TOOLS, TOOL_IDS, UPGRADES, type CarType, type ToolId, type UpgradeId } from '../game/data';
+import { BASE_TOOLS, CARS, CAR_TYPES, FAULTS, PARTS, TOOLS, TOOL_IDS, UPGRADES, type CarType, type FaultId, type PartCat, type ToolId, type UpgradeId } from '../game/data';
 import { Job } from '../game/job';
 import { CAREER_LENGTH, careerJob, dailyJob, todayKey, type JobDef } from '../game/jobs';
 import { buyUpgrade, dailyDone, finishJob, garageCtx, loadSave, newSave, owns, writeSave, type SaveData } from '../game/progress';
 import { getLang, pickLang, setLang, t, type Lang } from '../i18n';
 import { Car } from '../render/cars';
+import { fadePosts } from '../render/garage';
 import type { Shot } from '../render/camera';
 import { EngineBay, Ratchet, Tester } from '../render/engineBay';
 import type { Stage } from '../render/stage';
@@ -64,6 +65,8 @@ export class Play {
     ui.onPause = () => void this.pause();
     ui.setMoney(this.save.money);
     window.addEventListener('pointerdown', () => unlockAudio(), { capture: true });
+    // a tap during a wait (car arriving, a tool at work, the test drive) fast-forwards it
+    window.addEventListener('pointerdown', () => this.speedUp(), { capture: true });
     // instant feedback on every tap: a soft click on any button, a ring where the 3D view was tapped
     ui.root.addEventListener('click', (e) => {
       if ((e.target as HTMLElement).closest('button')) sfx.tap();
@@ -143,16 +146,16 @@ export class Play {
     const w = c.wheel.center;
     return {
       title: { target: V(0.4, 1.2, -1.2), dir: V(0.55, 0.38, 1), radius: 4.6, portraitShift: -0.4 } as Shot,
-      garage: { target: V(0.1, 0.9, -0.2), dir: V(0.5, 0.4, 1), radius: 3.4, portraitShift: 0.55, landscapeShift: 0.35 } as Shot,
-      engine: { target: bayC, dir: V(-0.15, 1.6, 0.75), radius: 0.78, portraitShift: 0.1 } as Shot,
+      garage: { target: V(0.1, 0.9, -0.2), dir: V(0.5, 0.4, 1), radius: 2.8, portraitRadius: 2.0, portraitDir: V(0.45, 0.62, 1), portraitShift: 0.15, landscapeShift: 0.35 } as Shot,
+      engine: { target: bayC, dir: V(-0.15, 1.6, 0.75), radius: 0.78, portraitRadius: 0.68, portraitShift: 0.04 } as Shot,
       under: { target: V(0, LIFT_UP + 0.15, 0), dir: V(1.4, -0.75, 1.9), radius: 1.5, portraitShift: 0.2 } as Shot,
-      side: { target: V(0.7, 0.75, 0.15), dir: V(1, 0.35, 0.25), radius: 1.0, portraitShift: 0.2 } as Shot,
+      side: { target: V(0.4, 0.75, 0.15), dir: V(0.55, 0.45, 1.25), radius: 1.0, portraitDir: V(0.3, 0.5, 1.3), portraitRadius: 1.05, portraitShift: 0.1 } as Shot,
       listen: { target: V(0, 0.6, c.frontZ - 0.3), dir: V(0.35, 0.35, 1), radius: 1.2, portraitShift: 0.2 } as Shot,
-      test: { target: V(0, 0.7, 0.2), dir: V(0.75, 0.32, 1), radius: 2.0, portraitShift: 0.35 } as Shot,
-      wheel: { target: c.world(w.x + 0.15, w.y, w.z), dir: V(1, 0.3, 0.45), radius: 0.62, portraitShift: 0.05 } as Shot,
+      test: { target: V(0, 0.7, 0.2), dir: V(0.75, 0.32, 1), radius: 1.7, portraitRadius: 1.5, portraitDir: V(0.75, 0.5, 1), portraitShift: 0.1 } as Shot,
+      wheel: { target: c.world(w.x + 0.15, w.y, w.z), dir: V(1, 0.3, 0.45), radius: 0.62, portraitRadius: 0.55, portraitShift: 0 } as Shot,
       rear: { target: V(0.2, 0.3, -c.size.z / 2), dir: V(0.8, 0.45, -1), radius: 0.9, portraitShift: 0.15 } as Shot,
       door: { target: c.world(c.size.x / 2, 0.6, 0.12), dir: V(0.9, 0.38, 1.0), radius: 0.95, portraitShift: 0.1 } as Shot,
-      drive: { target: V(0, 0.8, -4), dir: V(0.5, 0.5, 1), radius: 4.2, portraitShift: 0.5 } as Shot,
+      drive: { target: V(0, 0.8, -4), dir: V(0.5, 0.5, 1), radius: 4.2, portraitRadius: 3.0, portraitShift: 0.3 } as Shot,
     };
   }
 
@@ -166,7 +169,9 @@ export class Play {
       s.garage.lift.carriage.position.y = this.lift;
       if (this.engineOn && !this.car.ev && Math.random() < dt * 5) s.fx.smoke(this.car.tailpipe(), V(0, 0, -1), 1, '#f0f0f0');
     }
+    this.frameInsets();
     s.rig.apply(tt, dt);
+    fadePosts(s.garage.lift, s.rig.camera.position, s.rig.target, dt || 1);
     this.ui.marker(null);
     const mp = this.markerFor ? s.project(this.markerFor.getWorldPosition(V(0, 0, 0))) : null;
     const target = this.input.current().find((x) => x.id === this.expected) ?? this.input.current()[0];
@@ -190,6 +195,55 @@ export class Play {
       }),
     );
   }
+
+  /** the camera frames the subject in the band between the top HUD strips and the bottom toolbar / action button */
+  private frameInsets() {
+    const H = window.innerHeight;
+    let top = 0;
+    let bottom = 0;
+    for (const e of this.ui.root.querySelectorAll<HTMLElement>('.hud, .steps, .ticket.compact')) {
+      const b = e.getBoundingClientRect();
+      if (b.height && b.bottom < H / 2) top = Math.max(top, b.bottom);
+    }
+    for (const e of this.ui.root.querySelectorAll<HTMLElement>('.toolbar, .center-action')) {
+      const b = e.getBoundingClientRect();
+      if (b.height && b.top > H / 2) bottom = Math.max(bottom, H - b.top);
+    }
+    this.stage.rig.setInsets(top + 4, bottom + 4);
+  }
+
+  /*
+   * Skippable waits: nothing to do for the player, so a tap anywhere plays the rest 4x faster.
+   * A small "tap to speed up" chip appears when the wait is more than a moment.
+   */
+  private skipN = 0;
+  private skipSeg = 0;
+  async skippable<T>(p: Promise<T>): Promise<T> {
+    if (this.skipN++ === 0) {
+      const seg = ++this.skipSeg;
+      clock.later(0.5, () => {
+        if (this.skipN > 0 && seg === this.skipSeg) this.ui.skipChip(clock.scale > 1 ? 'fast' : 'on');
+      });
+    }
+    try {
+      return await p;
+    } finally {
+      if (--this.skipN === 0) {
+        this.skipSeg++;
+        clock.scale = 1;
+        this.ui.skipChip(null);
+      }
+    }
+  }
+
+  speedUp() {
+    if (this.skipN <= 0 || this.paused) return;
+    clock.scale = 4;
+    this.ui.skipChip('fast');
+  }
+
+  /** parts fitted at the last failed test drive (-1: not tested yet) */
+  private testedFits = -1;
 
   /** a soft glow behind the object to touch */
   private halo = makeHalo();
@@ -471,13 +525,14 @@ export class Play {
     this.placeCars(def.car, a, b);
     if (def.faults.includes('scratch')) this.car.addScratch();
     this.job = new Job(def, this.ctx);
+    this.testedFits = -1;
     sdk.gameplayStart();
     this.ui.showMoney(false);
     this.ui.showHud(true);
     this.ui.keysHelp(ADS && !this.job.hintUsed);
     this.setClock();
     this.stage.rig.snap(this.shots().garage);
-    await this.driveIn();
+    await this.skippable(this.driveIn());
     this.phase = 'diagnose';
     const symptoms = def.faults.map((f) => t(def.mod === 'misleading' && FAULTS[f].misleads ? `fault.${f}.mislead` : `fault.${f}.symptom`));
     this.ui.showTicket(def, symptoms);
@@ -490,9 +545,9 @@ export class Play {
   private async driveIn() {
     this.phase = 'arrive';
     const r = this.car.root;
-    sfx.drive(2.0);
+    sfx.drive(1.5);
     let last = -12;
-    await clock.tween(2.0, (k) => {
+    await clock.tween(1.5, (k) => {
       r.position.z = lerp(-12, 0, k);
       this.car.spinWheels(r.position.z - last);
       last = r.position.z;
@@ -511,9 +566,15 @@ export class Play {
     const anyFixed = j.fixed.size > 0;
     if (window.innerHeight > window.innerWidth) this.ui.compactTicket(j.clues.size === 0 && !anyFixed);
     const installed = anyFixed || j.wrong.length > 0;
-    this.ui.steps(installed ? 'test' : 'diagnose');
-    const hintKey = installed ? 'prompt.fixedMore' : j.clues.size ? 'prompt.diagnoseMore' : 'prompt.diagnose';
-    this.hint(hintKey);
+    // a part was fitted since the last test drive: testing is the next move
+    const fits = j.fixed.size + j.wrong.length;
+    const newFit = installed && fits > this.testedFits;
+    // the last test drive failed and nothing changed since: find the fault that is left
+    const failed = this.testedFits >= 0 && !newFit;
+    this.ui.steps(newFit ? 'test' : 'diagnose');
+    const hintKey = newFit ? 'prompt.fixedMore' : failed ? null : j.clues.size ? 'prompt.diagnoseMore' : 'prompt.diagnose';
+    if (failed) this.ui.prompt(t('prompt.oneMore'));
+    else this.hint(hintKey);
     const choice = await new Promise<{ k: 'tool'; t: ToolId } | { k: 'hint' } | { k: 'repair' } | { k: 'test' }>((res) => {
       this.ui.toolbar({
         tools: this.toolsFor().map((id) => ({ id, used: j.clues.has(id), locked: !!TOOLS[id].upgrade && !owns(this.save, TOOLS[id].upgrade!), minutes: j.toolMinutes(id) })),
@@ -526,8 +587,9 @@ export class Play {
         onHint: () => res({ k: 'hint' }),
         onRepair: () => res({ k: 'repair' }),
         onTest: () => res({ k: 'test' }),
-        repairReady: j.clues.size > 0 && !anyFixed,
-        testReady: anyFixed || j.wrong.length > 0,
+        repairReady: j.clues.size > 0 && !newFit,
+        testReady: installed,
+        testPulse: newFit,
       });
       if (this.tutOn) {
         if (!j.clues.size) this.tutorial('tool', '[data-tool=tester]');
@@ -559,7 +621,7 @@ export class Play {
       return false;
     }
     if (choice.k === 'test') return this.testDrive();
-    const sheet = this.ui.partsSheet(this.ui.money, j.def.car, ADS);
+    const sheet = this.ui.partsSheet(this.save.money, j.def.car, ADS, this.partsTab());
     if (this.tutOn) this.tutorial('part', '[data-part=battery]');
     const pick = await sheet;
     if (this.tut) this.tut.close();
@@ -575,16 +637,50 @@ export class Play {
     return false;
   }
 
+  /** the parts sheet opens where the latest problem was found (no hunting through the tabs) */
+  private partsTab(): PartCat | undefined {
+    const bad = [...this.job.clues.values()].filter((r) => r.verdict === 'bad').pop();
+    if (!bad) return undefined;
+    const ev = !!CARS[this.job.def.car].ev;
+    let best = 0;
+    let cat: PartCat | undefined;
+    for (const f of Object.keys(FAULTS) as FaultId[]) {
+      const d = FAULTS[f];
+      if (d.cars === (ev ? 'fuel' : 'ev')) continue;
+      const k = d.findings.filter((x) => bad.findings.includes(x)).length / d.findings.length;
+      if (k > best) {
+        best = k;
+        cat = PARTS[d.part].cat;
+      }
+    }
+    return cat;
+  }
+
   // ---------- diagnosis tools ----------
   async useTool(tool: ToolId, free: boolean) {
     this.phase = `tool:${tool}`;
     const j = this.job;
     const r = j.useTool(tool, free);
     this.ui.compactTicket(true);
-    const sh = this.shots();
     const na = r.verdict === 'na';
     if (tool === 'tester') await this.testerScene();
-    else if (tool === 'obd') {
+    else await this.skippable(this.toolScene(tool, r.findings, na));
+    this.ui.prompt(null);
+    sfx[r.verdict === 'bad' ? 'bad' : 'good']();
+    await this.ui.readout(tool, r, j.def.car);
+    this.ui.setClue(r, j.def.car);
+    this.setClock();
+    if (tool === 'tester') await this.testerDone();
+    // back to the garage view while the toolbar is already up (no wait)
+    void this.stage.rig.go(this.shots().garage, 0.8);
+    if (tool === 'lift') void this.raise(false);
+    this.ui.compactTicket(false);
+  }
+
+  /** what a diagnosis tool shows while it works (skippable: no input needed) */
+  private async toolScene(tool: ToolId, findings: readonly string[], na: boolean) {
+    const sh = this.shots();
+    if (tool === 'obd') {
       await this.stage.rig.go(sh.side, 0.8);
       this.ui.prompt(t('prompt.obd'));
       for (let i = 0; i < 3; i++) {
@@ -595,7 +691,7 @@ export class Play {
       await this.stage.rig.go(sh.listen, 0.8);
       this.ui.prompt(t('prompt.listen'));
       await clock.wait(0.4);
-      await this.crank(r.findings.includes('clicking') ? 'click' : r.findings.includes('cranks') ? 'crank' : 'run', 1.6);
+      await this.crank(findings.includes('clicking') ? 'click' : findings.includes('cranks') ? 'crank' : 'run', 1.6);
     } else if (tool === 'lift') {
       await this.raise(true);
       await this.stage.rig.go(sh.under, 1.0);
@@ -603,7 +699,7 @@ export class Play {
       await clock.wait(0.9);
     } else if (tool === 'drive') {
       this.ui.prompt(t('prompt.drive'));
-      await this.driveLoop(r.findings.includes('no_start'));
+      await this.driveLoop(findings.includes('no_start'));
     } else if (tool === 'gauge') {
       await this.stage.rig.go(sh.wheel, 0.8);
       this.ui.prompt(t('prompt.gauge'));
@@ -628,15 +724,6 @@ export class Play {
       else await clock.wait(0.6);
       probe.removeFromParent();
     }
-    this.ui.prompt(null);
-    sfx[r.verdict === 'bad' ? 'bad' : 'good']();
-    await this.ui.readout(tool, r, j.def.car);
-    this.ui.setClue(r, j.def.car);
-    this.setClock();
-    if (tool === 'tester') await this.testerDone();
-    await this.stage.rig.go(this.shots().garage, 0.8);
-    if (tool === 'lift') await this.raise(false);
-    this.ui.compactTicket(false);
   }
 
   /** turn the key: clicking, cranking without catching, or a short run */
@@ -669,11 +756,14 @@ export class Play {
     this.engineOn = false;
   }
 
+  private liftGen = 0;
   async raise(up: boolean, height = LIFT_UP) {
     sfx.lift();
     const from = this.lift;
     const to = up ? height : 0;
-    await clock.tween(1.4 * Math.abs(to - from) / LIFT_UP + 0.2, (k) => (this.lift = lerp(from, to, k)), ease.inOut);
+    // a newer lift move takes over from one still running
+    const g = ++this.liftGen;
+    await clock.tween((1.4 * Math.abs(to - from)) / LIFT_UP + 0.2, (k) => g === this.liftGen && (this.lift = lerp(from, to, k)), ease.inOut);
   }
 
   /** a short drive: out of the door backwards and back in (or a failed start) */
@@ -708,10 +798,12 @@ export class Play {
 
   private async testerScene() {
     const sh = this.shots();
-    await this.stage.rig.go(sh.engine, 0.9);
+    // the hood opens while the camera is still moving in
+    const cam = this.stage.rig.go(sh.engine, 0.8);
+    await clock.wait(0.3);
     this.bay.group.visible = true;
     sfx.hood();
-    await this.bay.openHood();
+    await Promise.all([cam, this.bay.openHood()]);
     const tst = this.tester;
     this.bay.group.add(tst.group);
     tst.group.position.set(-this.bay.W / 2 + 0.42, 0.1, this.bay.L / 2 + 0.12);
@@ -761,11 +853,11 @@ export class Play {
     this.ui.hand(null);
     this.ui.prompt(t('prompt.measuring'));
     const value = reading.verdict === 'bad' ? parseFloat(String(reading.findings.includes('low_volt') ? 11.2 : 12.1)) : 12.6;
-    await clock.tween(1.0, (k) => tst.screen.draw((value * k).toFixed(1), '#9fe7b5', t('screen.volts')));
+    await clock.tween(0.7, (k) => tst.screen.draw((value * k).toFixed(1), '#9fe7b5', t('screen.volts')));
     sfx.beep();
     const bad = reading.verdict === 'bad';
     tst.screen.draw(value.toFixed(1), bad ? '#ff8a7a' : '#9fe7b5', t(bad ? 'screen.weak' : 'screen.good'));
-    await clock.wait(0.5);
+    await clock.wait(0.35);
     this.ui.prompt(null);
     if (this.tutOn) this.tutorial('clue');
   }
@@ -785,6 +877,11 @@ export class Play {
     this.endTutorialStep('test');
     await this.stage.rig.go(this.shots().test, 0.9);
     await this.ui.centerAction(`<svg width="34" height="34" viewBox="0 0 64 64"><circle cx="20" cy="32" r="12" fill="none" stroke="#fff" stroke-width="7"/><path d="M31 32h25M48 32v9M56 32v7" stroke="#fff" stroke-width="7" stroke-linecap="round"/></svg> ${t('action.test')}`, 'green', t('prompt.test'));
+    return this.skippable(this.testRun());
+  }
+
+  /** the car starts (or not) and the result shows: no input needed, so skippable */
+  private async testRun(): Promise<boolean> {
     const res = this.job.test();
     this.setClock();
     const noStart = res.remaining.some((f) => FAULTS[f].noStart);
@@ -802,7 +899,7 @@ export class Play {
       this.stage.fx.sparkle(this.car.world(0, this.car.size.y + 0.1, 0), 24);
       this.ui.toast(t('toast.runs'), 'good');
       sdk.happytime();
-      await clock.wait(1.6);
+      await clock.wait(0.9);
       return true;
     }
     await clock.wait(0.8);
@@ -811,8 +908,9 @@ export class Play {
     sfx.bad();
     sdk.sadMoment?.('test_failed');
     this.ui.toast(t('toast.notFixed', { symptom: t(`fault.${res.remaining[0]}.symptom`) }), 'bad', 2.6);
+    this.testedFits = this.job.fixed.size + this.job.wrong.length;
     await clock.wait(1.2);
-    await this.stage.rig.go(this.shots().garage, 0.8);
+    void this.stage.rig.go(this.shots().garage, 0.8);
     return false;
   }
 
@@ -825,15 +923,20 @@ export class Play {
     this.phase = 'handback';
     this.ui.steps(null);
     this.ui.hideTicket();
-    await this.stage.rig.go(this.shots().garage, 0.9);
     const r = this.car.root;
-    sfx.drive(2.4);
+    sfx.drive(1.6);
     let last = 0;
-    await clock.tween(2.4, (k) => {
-      r.position.z = lerp(0, -12, k);
-      this.car.spinWheels(r.position.z - last);
-      last = r.position.z;
-    }, ease.inOut);
+    // the customer drives off while the camera pulls back (skippable)
+    await this.skippable(
+      Promise.all([
+        this.stage.rig.go(this.shots().garage, 0.9),
+        clock.tween(1.6, (k) => {
+          r.position.z = lerp(0, -12, k);
+          this.car.spinWheels(r.position.z - last);
+          last = r.position.z;
+        }, ease.in),
+      ]),
+    );
     sfx.engineStop();
     this.engineOn = false;
     sdk.gameplayStop();

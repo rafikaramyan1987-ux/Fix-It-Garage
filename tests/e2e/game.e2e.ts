@@ -61,6 +61,36 @@ test('a wrong part is fitted and wasted; the test drive says what is still wrong
   await d.until(() => !!document.querySelector('[data-tool=test]'), 40);
   expect(await d.test()).toBe(false);
   await expect(page.locator('[data-tool=repair]')).toBeVisible();
+  // after a failed test drive the Test button stops pulsing (nothing new was fitted) and one line says what to do
+  await d.tick(0.5);
+  await expect(page.locator('[data-tool=test]')).not.toHaveClass(/pulse/);
+  await expect(page.locator('.hintbar')).toHaveCount(1);
+  await expect(page.locator('.steps')).toHaveAttribute('data-step', 'diagnose');
+});
+
+test('short of cash: a part can still be ordered on credit (never a dead end)', async ({ page }) => {
+  const { d } = await open(page, '&job=2', richSave({ career: 2, money: 10 }));
+  await d.until(() => !!document.querySelector('.toolbar'), 40);
+  await d.click('[data-tool=repair]');
+  await d.tick(0.3);
+  await d.click('.tab[data-cat=wheels]');
+  await d.click('[data-part=pads]');
+  await d.tick(0.2);
+  await expect(page.locator('.parts-sheet .credit')).toBeVisible();
+  await expect(page.locator('[data-action=order]')).toBeEnabled();
+  await d.click('[data-action=order]');
+  await d.tick(1);
+  await expect(page.locator('.pill.money .val')).toHaveText('−40');
+});
+
+test('waits are skippable: a tap during the car driving in speeds it up', async ({ page }) => {
+  const { d } = await open(page, '&job=2', richSave({ career: 2 }));
+  await d.until(() => !!document.querySelector('.skipchip'), 5);
+  const vp = page.viewportSize()!;
+  await page.mouse.click(vp.width / 2, vp.height * 0.4);
+  await expect(page.locator('.skipchip.fast')).toBeVisible();
+  await d.until(() => !!document.querySelector('.toolbar'), 10);
+  await expect(page.locator('.skipchip')).toHaveCount(0);
 });
 
 for (const n of [2, 4, 7, 12, 18, 23, 26]) {
@@ -184,7 +214,7 @@ test('keyboard (optional): number keys pick tools, Space acts, Enter confirms, R
 });
 
 test('impact wrench: one hold turns all the wheel nuts at once', async ({ page }) => {
-  const { d } = await open(page, '&job=3', richSave({ career: 3, upgrades: ['wrench'] }));
+  const { d } = await open(page, '&job=4', richSave({ career: 4, upgrades: ['wrench'] }));
   await d.until(() => !!document.querySelector('.toolbar'), 40);
   await d.order('tyre');
   const ids: string[] = [];

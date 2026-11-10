@@ -38,9 +38,10 @@ export class Repairs {
     p.ui.steps('repair');
     const price = p.job.buy(part, free);
     if (price) {
-      await p.ui.countMoney(p.ui.money - price, 0.5);
-      p.save.money = p.ui.money;
+      // the money counts down while the part drops onto the cart
+      p.save.money = p.ui.money - price;
       p.persist();
+      void p.ui.countMoney(p.save.money, 0.5);
       sfx.cash();
     }
     p.ui.toast(t('parts.delivered', { part: t(`part.${part}`) }), 'info');
@@ -53,7 +54,7 @@ export class Repairs {
     await clock.tween(0.45, (k) => (box.position.y = g.cartTop.y + 0.1 + 0.8 * (1 - k)), ease.in);
     sfx.thud();
     this.fx.dust(box.getWorldPosition(V(0, 0, 0)).add(V(0, -0.08, 0)), 10);
-    await clock.wait(0.3);
+    await clock.wait(0.15);
     p.ui.compactTicket(true);
     // a wrong part is still fitted the proper way (and wasted), except where the car has no place for it
     const action = PARTS[part].action;
@@ -77,7 +78,8 @@ export class Repairs {
       sfx.good();
       this.fx.sparkle(p.car.world(0, p.car.size.y + 0.1, 0), 14);
     }
-    await this.rig.go(p.shots().garage, 0.8);
+    // back to the garage view while the toolbar is already up (no wait)
+    void this.rig.go(p.shots().garage, 0.8);
   }
 
   // ---------- generic helpers ----------

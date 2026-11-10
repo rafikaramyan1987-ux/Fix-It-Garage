@@ -7,7 +7,7 @@ must identify its faults: no other set of the same number of faults that fits th
 **Result: all checks passed.**
 
 Also checked: 100 endless jobs (41-140) and 360 daily jobs (120 days × 3 progress levels).
-Variety: no two identical jobs in a row (career and endless), and consecutive career jobs always change the car type.
+Variety: no two identical jobs in a row (career and endless), and consecutive career jobs always change the car type, and in jobs 1-10 neighbours never repeat the same repair action.
 
 ## Career (40 jobs)
 
@@ -15,15 +15,15 @@ Variety: no two identical jobs in a row (career and endless), and consecutive ca
 | ---: | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: |
 | 1 | sedan | dead-battery |  | tester | 41 min | 60 min | $60 | $20 | $80 |
 | 2 | hatchback | brake-pads |  | tester, listen | 50 min | 75 min | $65 | $25 | $170 |
-| 3 | sedan | flat-tyre |  | lift | 49 min | 75 min | $75 | $25 | $270 |
-| 4 | van | low-oil |  | lift, drive | 55 min | 85 min | $85 | $25 | $380 |
+| 3 | van | low-oil |  | lift, drive | 55 min | 85 min | $80 | $25 | $275 |
+| 4 | sedan | flat-tyre |  | lift | 49 min | 75 min | $80 | $25 | $380 |
 | 5 | hatchback | alternator | misleading | tester | 39 min | 60 min | $100 | $30 | $510 |
-| 6 | van | spark-plugs |  | listen | 34 min | 50 min | $100 | $30 | $640 |
-| 7 | sedan | exhaust-leak |  | listen | 38 min | 55 min | $95 | $30 | $765 |
-| 8 | hatchback | air-filter |  | obd | 44 min | 65 min | $105 | $30 | $900 |
+| 6 | van | exhaust-leak |  | listen | 38 min | 55 min | $100 | $30 | $640 |
+| 7 | sedan | spark-plugs |  | listen | 34 min | 50 min | $95 | $30 | $765 |
+| 8 | hatchback | brake-disc |  | drive | 50 min | 75 min | $105 | $30 | $900 |
 | 9 | pickup | starter |  | tester, listen | 44 min | 65 min | $125 | $35 | $1060 |
 | 10 | van | flat-tyre | rush | lift | 49 min | 55 min | $125 | $70 | $1255 |
-| 11 | pickup | brake-disc |  | drive | 50 min | 75 min | $140 | $35 | $1430 |
+| 11 | pickup | air-filter |  | obd | 44 min | 65 min | $140 | $35 | $1430 |
 | 12 | sedan | coolant-leak |  | obd | 49 min | 75 min | $125 | $40 | $1595 |
 | 13 | hatchback | thermostat |  | obd | 44 min | 65 min | $135 | $40 | $1770 |
 | 14 | sports | shock |  | drive | 48 min | 70 min | $180 | $40 | $1990 |

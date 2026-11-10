@@ -42,7 +42,7 @@ page.on('pageerror', (e) => console.log('PAGEERROR', e.message));
 const d = new Driver(page);
 d.fps = FPS;
 d.showTaps = true;
-await d.open(base, '&job=3&lang=en&pr=0.6');
+await d.open(base, '&job=4&lang=en&pr=0.6');
 d.onFrame = async () => {
   await page.screenshot({ path: frame(), type: 'jpeg', quality: 92, timeout: 180_000 });
   if (n % 60 === 0) console.log('frames', n);

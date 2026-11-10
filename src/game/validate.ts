@@ -88,6 +88,12 @@ export function validate(): Report {
     if (a.car === b.car && [...a.faults].sort().join() === [...b.faults].sort().join()) issues.push(`jobs ${n - 1} and ${n} are identical`);
   }
   for (let n = 2; n <= 40; n++) if (careerJob(n - 1).car === careerJob(n).car) issues.push(`jobs ${n - 1} and ${n} use the same car type`);
+  // the first ten jobs teach the game: neighbours never repeat the same hands-on repair (battery, wheel, brake, bay, under, fluid…)
+  const kinds = (n: number) => careerJob(n).faults.map((f) => PARTS[FAULTS[f].part].action);
+  for (let n = 2; n <= 10; n++) {
+    const a = kinds(n - 1);
+    if (kinds(n).some((k) => a.includes(k))) issues.push(`jobs ${n - 1} and ${n} repeat the same repair action (${kinds(n).join(', ')})`);
+  }
   let daily = 0;
   for (let d = 0; d < 120; d++)
     for (const p of [0, 12, 40]) {
@@ -109,7 +115,7 @@ export function reportMarkdown(r: Report) {
   for (const i of r.issues) out.push(`- ${i}`);
   if (r.issues.length) out.push('');
   out.push(`Also checked: ${r.checked.endless} endless jobs (41-140) and ${r.checked.daily} daily jobs (120 days × 3 progress levels).`);
-  out.push('Variety: no two identical jobs in a row (career and endless), and consecutive career jobs always change the car type.', '');
+  out.push('Variety: no two identical jobs in a row (career and endless), and consecutive career jobs always change the car type, and in jobs 1-10 neighbours never repeat the same repair action.', '');
   out.push('## Career (40 jobs)', '');
   out.push('| # | Car | Fault(s) | Tricky | Fastest diagnosis | Fastest solve | Target | Labour | Time bonus | Running total |');
   out.push('| ---: | --- | --- | --- | --- | ---: | ---: | ---: | ---: | ---: |');

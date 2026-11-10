@@ -121,6 +121,8 @@ svg { display: block; }
 .part .pr { font-size: 15px; color: var(--ink2); font-weight: 600; }
 .part.sel { outline: 3px solid var(--orange); }
 .sheet .row { display: flex; gap: 10px; justify-content: flex-end; }
+.sheet .row .credit { flex-basis: 100%; text-align: right; font-size: 13px; font-weight: 600; color: #a0602a; }
+.pill .val.neg { color: #d6453b; }
 
 /* hold ring + target marker */
 .ring { position: absolute; width: 84px; height: 84px; margin: -42px 0 0 -42px; pointer-events: none; }
@@ -437,3 +439,10 @@ svg { display: block; }
   .act { min-height: 42px; }
   .act .ic { width: 26px; height: 26px; }
 }
+
+/* a skippable wait: a tap anywhere speeds it up */
+.skipchip { position: absolute; left: 50%; bottom: calc(18px + var(--safe-b)); transform: translateX(-50%); display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 16px; background: rgba(40, 30, 20, 0.55); color: #fff; font-size: 14px; font-weight: 700; pointer-events: none; z-index: 30; animation: fade 0.25s ease both; white-space: nowrap; max-width: calc(100vw - 32px); }
+.skipchip .ff { font-size: 11px; letter-spacing: -2px; }
+.skipchip.fast { background: rgba(31, 157, 145, 0.85); }
+.skipchip.fast .ff { animation: ffpulse 0.4s ease-in-out infinite alternate; }
+@keyframes ffpulse { from { opacity: 0.5; } to { opacity: 1; } }

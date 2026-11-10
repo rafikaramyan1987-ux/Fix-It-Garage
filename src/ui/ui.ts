@@ -46,6 +46,8 @@ export interface ToolbarOpts {
   onTest: () => void;
   repairReady: boolean;
   testReady: boolean;
+  /** pulse the Test button (a new part was fitted since the last test) */
+  testPulse?: boolean;
 }
 
 export class UI {
@@ -127,7 +129,9 @@ export class UI {
 
   setMoney(n: number) {
     this.money = n;
-    this.moneyVal.textContent = String(Math.round(n));
+    const v = Math.round(n);
+    this.moneyVal.textContent = v < 0 ? `−${-v}` : String(v);
+    this.moneyVal.classList.toggle('neg', v < 0);
   }
 
   async countMoney(to: number, dur = 0.8) {
@@ -272,8 +276,9 @@ export class UI {
       e.style.top = `${Math.max(8, ...stack) + 6}px`;
       e.style.bottom = '';
     } else {
-      const tb = this.toolbarEl?.getBoundingClientRect();
-      e.style.bottom = `${tb ? h - tb.top + 6 : 12}px`;
+      // layout position (offsetTop ignores the toolbar's slide-in transform, so the line never lands on the tools)
+      const tb = this.toolbarEl;
+      e.style.bottom = `${tb ? h - tb.offsetTop + 6 : 12}px`;
       e.style.top = '';
     }
   }
@@ -372,7 +377,7 @@ export class UI {
     r.addEventListener('click', o.onRepair);
     acts.append(r);
     if (o.testReady) {
-      const ts = el('button', 'act test pulse', `<span class="ic">${icons.key}</span><span class="nm fit">${esc(t('action.test'))}</span><span class="cost fit">${esc(t('action.testSub'))}</span>`);
+      const ts = el('button', `act test${o.testPulse !== false ? ' pulse' : ''}`, `<span class="ic">${icons.key}</span><span class="nm fit">${esc(t('action.test'))}</span><span class="cost fit">${esc(t('action.testSub'))}</span>`);
       ts.dataset.tool = 'test';
       ts.addEventListener('click', o.onTest);
       acts.append(ts);
@@ -406,7 +411,7 @@ export class UI {
   }
 
   /** pick a part, then order it (or get it free with a rewarded ad); null = cancelled */
-  partsSheet(money: number, car: CarType, freeAd: boolean) {
+  partsSheet(money: number, car: CarType, freeAd: boolean, open: PartCat = 'bay') {
     return new Promise<{ part: PartId; free: boolean } | null>((res) => {
       const shade = el('div', 'shade');
       const sheet = el('div', 'sheet parts-sheet', `<h3>${esc(t('parts.title'))}</h3><p>${esc(t('parts.desc'))}</p>`);
@@ -435,9 +440,10 @@ export class UI {
         }
         const buy = el('button', 'btn green', esc(t('parts.order', { price: p.price })));
         buy.dataset.action = 'order';
-        if (p.price > money) buy.setAttribute('disabled', '');
         buy.addEventListener('click', () => done({ part: sel!, free: false }));
         row.append(buy);
+        // never a dead end: short of cash, the part is bought on credit (the customer pays parts back)
+        if (p.price > money) row.append(el('div', 'credit fit', esc(t('parts.credit'))));
       };
       const renderCat = (cat: PartCat) => {
         tabs.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.cat === cat));
@@ -463,7 +469,7 @@ export class UI {
         tabs.append(b);
       }
       sheet.append(tabs, grid, row);
-      renderCat('bay');
+      renderCat(open);
       renderRow();
       const done = (v: { part: PartId; free: boolean } | null) => {
         shade.remove();
@@ -473,6 +479,21 @@ export class UI {
       shade.addEventListener('click', () => done(null));
       this.root.append(shade, sheet);
     });
+  }
+
+  /** the "tap to speed up" chip of a skippable wait (null hides it) */
+  private skipEl: HTMLElement | null = null;
+  skipChip(state: 'on' | 'fast' | null) {
+    if (!state) {
+      this.skipEl?.remove();
+      this.skipEl = null;
+      return;
+    }
+    if (!this.skipEl) {
+      this.skipEl = el('div', 'skipchip', `<span class="ff">▶▶</span><span class="fit">${esc(t('ui.skip'))}</span>`);
+      this.root.append(this.skipEl);
+    }
+    this.skipEl.classList.toggle('fast', state === 'fast');
   }
 
   toast(text: string, kind: 'good' | 'bad' | 'info' = 'info', dur = 1.8) {
