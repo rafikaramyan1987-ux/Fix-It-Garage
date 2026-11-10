@@ -147,22 +147,30 @@ export class UI {
     const title = job.daily ? t('hud.daily') : t('hud.job', { n: job.n });
     const tricky = job.mod ? `<div class="tricky"><b>${esc(t('hud.tricky'))}</b> ${esc(t(`mod.${job.mod}`))}</div>` : '';
     const two = job.faults.filter((f) => f !== 'scratch').length > 1 ? `<span class="badge">${esc(t('hud.twoFaults'))}</span>` : '';
+    const quote = symptoms.map((s) => `“${esc(s)}”`).join(' ');
     const tk = el(
       'div',
-      `ticket${job.mod ? ' is-tricky' : ''}`,
-      `<button class="toggle fit">${esc(t('hud.show'))}</button><div class="head"><div class="avatar">${avatar(c.hair, c.skin, c.shirt)}</div><div class="meta"><div class="who">${esc(c.name)}</div><div class="car fit">${esc(t(`car.${job.car}`))} · ${esc(title)}</div><div class="reward fit">${esc(t('hud.reward', { pay: job.labor, bonus: job.timeBonus }))}</div></div></div>
-      ${tricky}<div class="quote">${symptoms.map((s) => `“${esc(s)}”`).join('<br>')} ${two}</div><div class="clues-wrap"><h4><span>${esc(t('hud.clues'))}</span><span>${esc(t('hud.target', { time: fmtTime(job.targetMinutes) }))}</span></h4><ul class="clues"><li class="empty">${esc(t('hud.noClues'))}</li></ul></div>`,
+      `ticket${job.mod ? ' is-tricky' : ''}${this.portrait ? ' compact' : ''}`,
+      `<button class="strip" data-action="ticket"><span class="avatar">${avatar(c.hair, c.skin, c.shirt)}</span><span class="sq">${quote}</span><span class="clue-count hidden">0</span><span class="pay-pill">$${job.labor}</span></button>
+      <div class="details"><div class="head"><div class="avatar">${avatar(c.hair, c.skin, c.shirt)}</div><div class="meta"><div class="who">${esc(c.name)}</div><div class="car fit">${esc(t(`car.${job.car}`))} · ${esc(title)}</div><div class="reward fit">${esc(t('hud.reward', { pay: job.labor, bonus: job.timeBonus }))}</div></div><button class="toggle" aria-label="${esc(t('hud.hide'))}">▴</button></div>
+      ${tricky}<div class="quote">${symptoms.map((s) => `“${esc(s)}”`).join('<br>')} ${two}</div><div class="clues-wrap"><h4><span>${esc(t('hud.clues'))}</span><span>${esc(t('hud.target', { time: fmtTime(job.targetMinutes) }))}</span></h4><ul class="clues"><li class="empty">${esc(t('hud.noClues'))}</li></ul></div></div>`,
     );
-    tk.querySelector('.toggle')!.addEventListener('click', () => this.compactTicket(!tk.classList.contains('compact')));
+    tk.querySelector('.strip')!.addEventListener('click', () => this.compactTicket(false, true));
+    tk.querySelector('.toggle')!.addEventListener('click', () => this.compactTicket(true, true));
     this.ticketEl = tk;
     this.cluesEl = tk.querySelector('.clues');
     this.root.append(tk);
   }
 
-  compactTicket(on: boolean) {
+  get portrait() {
+    return window.innerHeight > window.innerWidth;
+  }
+
+  /** collapse the ticket to its strip / open it. On phones (portrait) only the player opens it. */
+  compactTicket(on: boolean, user = false) {
     if (!this.ticketEl) return;
+    if (this.portrait && !user && !on) return;
     this.ticketEl.classList.toggle('compact', on);
-    this.ticketEl.querySelector('.toggle')!.textContent = on ? t('hud.show') : t('hud.hide');
   }
 
   hideTicket() {
@@ -179,14 +187,133 @@ export class UI {
     const li = el('li', cls, `<span class="dot">${r.verdict === 'bad' ? icons.cross : icons.check}</span><span class="lines">${readingLines(r, car).map(esc).join('<br>')}</span>`);
     li.dataset.tool = r.tool;
     this.cluesEl.append(li);
+    const n = this.cluesEl.querySelectorAll('li:not(.empty)').length;
+    const cc = this.ticketEl?.querySelector<HTMLElement>('.clue-count');
+    if (cc) {
+      cc.textContent = `🔍 ${n}`;
+      cc.classList.remove('hidden');
+      cc.classList.remove('bump');
+      void cc.offsetWidth;
+      cc.classList.add('bump');
+    }
   }
 
+  /*
+   * The one hint line: a slim, semi-transparent banner at the top or bottom edge (never two hints at once).
+   * Priority: a short flash (after a mistake) > the tutorial line > the step prompt.
+   */
+  private promptHtml: string | null = null;
+  private tutHtml: string | null = null;
+  private tutSkip: (() => void) | null = null;
+  private flashHtml: string | null = null;
+  private flashUntil = 0;
+  private hintEdge: 'top' | 'bottom' = 'bottom';
+
   prompt(html: string | null) {
-    this.promptEl?.remove();
-    this.promptEl = null;
-    if (!html) return;
-    this.promptEl = el('div', 'prompt', html);
-    this.root.append(this.promptEl);
+    this.promptHtml = html;
+    this.renderHint();
+  }
+
+  /** the tutorial's line (replaces the step prompt while set) with a small skip button */
+  tutorialHint(html: string | null, onSkip?: () => void) {
+    this.tutHtml = html;
+    this.tutSkip = onSkip ?? null;
+    this.renderHint();
+  }
+
+  /** a short line after a mistake, shown in place of the hint for a moment */
+  flashHint(text: string, dur = 1.8) {
+    this.flashHtml = esc(text);
+    this.flashUntil = clock.t + dur;
+    this.renderHint();
+    clock.later(dur, () => {
+      if (clock.t >= this.flashUntil - 0.01) {
+        this.flashHtml = null;
+        this.renderHint();
+      }
+    });
+  }
+
+  private renderHint() {
+    const html = this.flashHtml ?? this.tutHtml ?? this.promptHtml;
+    if (!html) {
+      this.promptEl?.remove();
+      this.promptEl = null;
+      return;
+    }
+    if (!this.promptEl) {
+      this.promptEl = el('div', 'hintbar');
+      this.root.append(this.promptEl);
+    }
+    const e = this.promptEl;
+    e.className = `hintbar ${this.hintEdge}${this.flashHtml ? ' flash' : this.tutHtml ? ' is-tut' : ''}`;
+    e.innerHTML = `<span class="ht">${html}</span>`;
+    if (this.tutHtml && !this.flashHtml && this.tutSkip) {
+      const sk = el('button', 'skip', esc(t('tut.skip')));
+      sk.dataset.action = 'skip-tutorial';
+      const f = this.tutSkip;
+      sk.addEventListener('click', () => f());
+      e.append(sk);
+    }
+    this.placeHint(null);
+  }
+
+  /** keep the hint at the edge away from the object to touch, clear of the ticket and the toolbar */
+  placeHint(avoid: { x: number; y: number } | null) {
+    const e = this.promptEl;
+    if (!e) return;
+    const h = window.innerHeight;
+    const edge: 'top' | 'bottom' = avoid ? (avoid.y > h * 0.5 ? 'top' : 'bottom') : this.toolbarEl ? 'bottom' : this.hintEdge;
+    this.hintEdge = edge;
+    e.classList.toggle('top', edge === 'top');
+    e.classList.toggle('bottom', edge === 'bottom');
+    if (edge === 'top') {
+      const stack = [this.stepsEl, this.ticketEl, this.hud].filter((x): x is HTMLElement => !!x && !x.classList.contains('hidden')).map((x) => x.getBoundingClientRect().bottom);
+      e.style.top = `${Math.max(8, ...stack) + 6}px`;
+      e.style.bottom = '';
+    } else {
+      const tb = this.toolbarEl?.getBoundingClientRect();
+      e.style.bottom = `${tb ? h - tb.top + 6 : 12}px`;
+      e.style.top = '';
+    }
+  }
+
+  /** the three-step journey of a job: find the fault, repair, test (null hides it) */
+  private stepsEl: HTMLElement | null = null;
+  steps(cur: 'diagnose' | 'repair' | 'test' | null) {
+    if (!cur) {
+      this.stepsEl?.remove();
+      this.stepsEl = null;
+      return;
+    }
+    if (!this.stepsEl) {
+      this.stepsEl = el('div', 'steps');
+      this.root.append(this.stepsEl);
+    }
+    const order = ['diagnose', 'repair', 'test'] as const;
+    const at = order.indexOf(cur);
+    this.stepsEl.dataset.step = cur;
+    this.stepsEl.innerHTML = order
+      .map((k, i) => `<span class="st${i < at ? ' done' : i === at ? ' on' : ''}" data-step="${k}"><i>${i < at ? '✓' : i + 1}</i><span class="fit">${esc(t(`step.${k}`))}</span></span>`)
+      .join('<span class="sep">›</span>');
+  }
+
+  /** the animated hand that shows the gesture on the object to touch (tap / hold / lift / rub) */
+  private gestureEl: HTMLElement | null = null;
+  gesture(p: { x: number; y: number } | null, kind: string) {
+    if (!p) {
+      this.gestureEl?.classList.add('hidden');
+      return;
+    }
+    if (!this.gestureEl) {
+      this.gestureEl = el('div', 'gesture', `<span class="gring"></span><span class="ghand">${icons.hand}</span>`);
+      this.root.append(this.gestureEl);
+    }
+    const g = this.gestureEl;
+    const cls = `gesture g-${kind}`;
+    if (g.className !== cls) g.className = cls;
+    g.style.left = `${p.x}px`;
+    g.style.top = `${p.y}px`;
   }
 
   toolbar(o: ToolbarOpts | null) {
@@ -202,7 +329,35 @@ export class UI {
         `<span class="ic">${tb.locked ? icons.lock : icons[tb.id]}</span><span class="nm fit">${esc(t(`tool.${tb.id}`))}</span><span class="cost fit">${esc(tb.locked ? t('tool.locked') : t('tool.min', { n: tb.minutes }))}</span>`,
       );
       b.dataset.tool = tb.id;
-      b.addEventListener('click', () => (tb.locked ? o.onLocked(tb.id) : o.onTool(tb.id)));
+      b.title = t(`tool.${tb.id}.what`);
+      // a long press shows a one-word hint of what the tool checks (and does not use the tool)
+      let timer: ReturnType<typeof setTimeout> | null = null;
+      let longPressed = false;
+      const tip = el('span', 'tooltip hidden', esc(t(`tool.${tb.id}.what`)));
+      b.append(tip);
+      b.addEventListener('pointerdown', () => {
+        longPressed = false;
+        timer = setTimeout(() => {
+          longPressed = true;
+          tip.classList.remove('hidden');
+        }, 450);
+      });
+      const endPress = () => {
+        if (timer) clearTimeout(timer);
+        timer = null;
+        setTimeout(() => tip.classList.add('hidden'), 900);
+      };
+      b.addEventListener('pointerup', endPress);
+      b.addEventListener('pointerleave', endPress);
+      b.addEventListener('contextmenu', (e) => e.preventDefault());
+      b.addEventListener('click', () => {
+        if (longPressed) {
+          longPressed = false;
+          return;
+        }
+        if (tb.locked) o.onLocked(tb.id);
+        else o.onTool(tb.id);
+      });
       tools.append(b);
     }
     const acts = el('div', 'acts');
@@ -225,6 +380,7 @@ export class UI {
     bar.append(tools, acts);
     this.toolbarEl = bar;
     this.root.append(bar);
+    this.placeHint(null);
   }
 
   /** a tool reading in a popup; resolves when closed */
@@ -336,12 +492,9 @@ export class UI {
     this.ringEl.classList.add('hidden');
   }
 
-  marker(p: { x: number; y: number } | null) {
-    this.markerEl.classList.toggle('hidden', !p);
-    if (p) {
-      this.markerEl.style.left = `${p.x}px`;
-      this.markerEl.style.top = `${p.y}px`;
-    }
+  /** the old arrow marker, replaced by the gesture hand: always hidden */
+  marker(_p: { x: number; y: number } | null) {
+    this.markerEl.classList.add('hidden');
   }
 
   /** the tutorial's pointing hand at a screen point (null hides it) */
@@ -471,7 +624,11 @@ export class UI {
   /** clear every in-job element (leaving a job) */
   clearJob() {
     this.hideTicket();
+    this.tutHtml = null;
+    this.flashHtml = null;
     this.prompt(null);
+    this.steps(null);
+    this.gesture(null, 'tap');
     this.toolbar(null);
     this.hideRing();
     this.marker(null);

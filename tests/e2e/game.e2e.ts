@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test';
-import { FAULT_PART, jobFaults, open, richSave, saved } from './helpers';
+import { FAULT_PART, hintOverlaps, jobFaults, open, richSave, saved } from './helpers';
 
 test('a returning player boots to the main menu; no errors, no ads anywhere in the web build', async ({ page }) => {
   const { d, errors } = await open(page, '', richSave());
@@ -15,16 +15,27 @@ test('a returning player boots to the main menu; no errors, no ads anywhere in t
 test('a new player lands straight in the first job; tutorial: battery tester, battery swap, test drive, payment', async ({ page }) => {
   const { d, errors } = await open(page);
   await d.until(() => !!document.querySelector('.toolbar'), 15);
+  await d.tick(0.2);
   await expect(page.locator('[data-action=play]')).toHaveCount(0);
-  await expect(page.locator('.tut')).toBeVisible();
+  // one hint line only (the tutorial's), the hand + glow on the button to press, the 3-step bar, the reward on the ticket
+  await expect(page.locator('.hintbar.is-tut')).toBeVisible();
+  await expect(page.locator('.hintbar')).toHaveCount(1);
   await expect(page.locator('.hand:not(.hidden)')).toBeVisible();
   await expect(page.locator('[data-tool=tester].tut-glow')).toBeVisible();
-  await expect(page.locator('.ticket .reward')).toContainText('$');
+  await expect(page.locator('.steps [data-step=diagnose].on')).toBeVisible();
+  await expect(page.locator('.ticket .pay-pill, .ticket .reward').first()).toContainText('$');
   await d.useTool('tester', 0.2);
   await expect(page.locator('.clues li.bad')).toHaveCount(1);
   await d.order('battery');
+  await expect(page.locator('.steps [data-step=repair].on')).toBeVisible();
+  const overlaps: string[] = [];
+  d.onStep = async (id) => {
+    overlaps.push(...(await hintOverlaps(page, id)));
+  };
   await d.repair({ wrongOrderOnce: true, beat: 0.1 });
+  expect(overlaps, 'hints must never cover the object to touch').toEqual([]);
   await d.until(() => !!document.querySelector('[data-tool=test]'), 40);
+  await expect(page.locator('.steps [data-step=test].on')).toBeVisible();
   expect(await d.test()).toBe(true);
   await d.tick(1.5);
   await expect(page.locator('.paycard')).toBeVisible();
@@ -181,4 +192,44 @@ test('impact wrench: one hold turns all the wheel nuts at once', async ({ page }
   await d.repair({ beat: 0.05 });
   expect(ids.filter((i) => i.startsWith('nut'))).toEqual([]);
   expect(ids.filter((i) => i === 'all').length).toBe(2);
+});
+
+test('wheel job on a phone-sized screen: one hint at most, never over the glowing nut; it hides after the first nut; compact ticket opens on tap', async ({ page }) => {
+  const { d } = await open(page, '&job=2', richSave({ career: 2 }));
+  await d.until(() => !!document.querySelector('.toolbar'), 40);
+  // long-press a tool: a one-word hint of what it checks
+  await d.tick(0.8);
+  await d.settle();
+  const box = await page.locator('[data-tool=lift]').boundingBox();
+  await page.mouse.move(box!.x + box!.width / 2, box!.y + box!.height / 2);
+  await page.mouse.down();
+  await page.waitForTimeout(600);
+  await expect(page.locator('[data-tool=lift] .tooltip')).toBeVisible();
+  await page.mouse.up();
+  await d.tick(0.2);
+  await expect(page.locator('.readout')).toHaveCount(0);
+  await d.order('pads');
+  const seen: { id: string; hints: number; text: string }[] = [];
+  const overlaps: string[] = [];
+  d.onStep = async (id) => {
+    overlaps.push(...(await hintOverlaps(page, id)));
+    seen.push({ id, hints: await page.locator('.hintbar').count(), text: await page.evaluate(() => document.querySelector('.hintbar')?.textContent ?? '') });
+  };
+  await d.repair({ beat: 0.1 });
+  expect(overlaps).toEqual([]);
+  expect(Math.max(...seen.map((x) => x.hints))).toBeLessThanOrEqual(1);
+  const nuts = seen.filter((x) => x.id.startsWith('nut'));
+  expect(nuts.length).toBe(10);
+  expect(nuts[0].hints).toBe(1);
+  expect(nuts.slice(1, 5).every((x) => x.hints === 0)).toBe(true);
+  expect(seen.map((x) => x.text).join(' ')).not.toMatch(/star/i);
+  // on phones the ticket is a compact strip that opens on tap
+  if ((page.viewportSize()?.width ?? 0) < (page.viewportSize()?.height ?? 0)) {
+    await d.until(() => !!document.querySelector('.toolbar'), 40);
+    await expect(page.locator('.ticket.compact .strip')).toBeVisible();
+    const h = (await page.locator('.ticket').boundingBox())!.height;
+    expect(h).toBeLessThan(70);
+    await d.click('[data-action=ticket]');
+    await expect(page.locator('.ticket:not(.compact) .clues-wrap')).toBeVisible();
+  }
 });

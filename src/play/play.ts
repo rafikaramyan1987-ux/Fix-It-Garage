@@ -16,7 +16,7 @@ import { Car } from '../render/cars';
 import type { Shot } from '../render/camera';
 import { EngineBay, Ratchet, Tester } from '../render/engineBay';
 import type { Stage } from '../render/stage';
-import { achievementsScreen, adNotice, bookScreen, confirm, dailyScreen, garageScreen, mainMenu, pauseScreen, settingsScreen, tutorialBubble } from '../ui/screens';
+import { achievementsScreen, adNotice, bookScreen, confirm, dailyScreen, garageScreen, mainMenu, pauseScreen, settingsScreen } from '../ui/screens';
 import type { UI } from '../ui/ui';
 import { Repairs } from './repairs';
 
@@ -167,16 +167,58 @@ export class Play {
       if (this.engineOn && !this.car.ev && Math.random() < dt * 5) s.fx.smoke(this.car.tailpipe(), V(0, 0, -1), 1, '#f0f0f0');
     }
     s.rig.apply(tt, dt);
-    this.ui.marker(this.markerFor ? s.project(this.markerFor.getWorldPosition(V(0, 0, 0)).add(V(0, 0.03, 0))) : null);
+    this.ui.marker(null);
+    const mp = this.markerFor ? s.project(this.markerFor.getWorldPosition(V(0, 0, 0))) : null;
+    const target = this.input.current().find((x) => x.id === this.expected) ?? this.input.current()[0];
+    // the gesture hand shows how to act (hidden while the player is already holding / rubbing)
+    this.ui.gesture(mp && target && !this.input.busy ? mp : null, target?.mode ?? 'tap');
+    this.halo.visible = !!this.markerFor;
+    if (this.markerFor) {
+      this.markerFor.getWorldPosition(this.halo.position);
+      const k = 0.5 + 0.5 * Math.sin(tt * 6);
+      this.halo.scale.setScalar(this.haloSize * (0.9 + 0.25 * k));
+      (this.halo.material as THREE.SpriteMaterial).opacity = 0.55 + 0.35 * k;
+    }
+    this.ui.placeHint(mp);
+    const te = this.tutTarget ? this.ui.root.querySelector(this.tutTarget) : null;
+    const tr = te?.getBoundingClientRect();
+    this.ui.hand(tr && tr.width ? { x: tr.left + tr.width / 2, y: tr.top + tr.height / 2 } : null);
     this.ui.tags(
       this.tagsFor.map((g) => {
         const p = s.project(g.obj.getWorldPosition(V(0, 0, 0)).add(V(0, 0.07, 0)));
         return { x: p.x, y: p.y, text: g.text, color: g.color };
       }),
     );
-    if (this.tut && this.markerFor && (this.tut.step === 'swap' || this.tut.step === 'leads')) {
-      const p = s.project(this.markerFor.getWorldPosition(V(0, 0, 0)));
-      this.ui.hand({ x: p.x + 18, y: p.y + 22 });
+  }
+
+  /** a soft glow behind the object to touch */
+  private halo = makeHalo();
+  private haloSize = 0.25;
+  /** mark the object to touch: glow halo + gesture hand (size from the object) */
+  mark(obj: THREE.Object3D | null) {
+    this.markerFor = obj;
+    if (!obj) return;
+    if (!this.halo.parent) this.stage.scene.add(this.halo);
+    const r = new THREE.Box3().setFromObject(obj).getBoundingSphere(new THREE.Sphere()).radius;
+    this.haloSize = Math.min(0.42, Math.max(0.09, r * 2.4));
+  }
+
+  // ---------- the one hint line ----------
+  /** show a step's hint unless the player already did that step correctly before */
+  hint(key: string | null, params?: Record<string, string | number>) {
+    if (!key || this.save.hintsSeen.includes(key)) {
+      this.ui.prompt(null);
+      return;
+    }
+    this.ui.prompt(t(key, params));
+  }
+
+  /** the player did the step right: hide its hint, now and next time */
+  hintDone(key: string | null) {
+    this.ui.prompt(null);
+    if (key && !this.save.hintsSeen.includes(key)) {
+      this.save.hintsSeen.push(key);
+      this.persist();
     }
   }
 
@@ -382,18 +424,24 @@ export class Play {
   private tutorial(step: string, target?: string | THREE.Object3D) {
     if (this.save.tutorialDone || this.job?.def.n !== 1) return;
     this.tut?.close();
-    const close = tutorialBubble(this.ui.root, t(`tut.${step}`), () => this.endTutorial(true));
-    this.tut = { step, close };
+    this.ui.tutorialHint(t(`tut.${step}`), () => this.endTutorial(true));
+    this.tut = { step, close: () => this.ui.tutorialHint(null) };
     this.ui.root.querySelectorAll('.tut-glow').forEach((e) => e.classList.remove('tut-glow'));
-    if (typeof target === 'string') {
-      const elm = this.ui.root.querySelector(target);
-      elm?.classList.add('tut-glow');
-      const r = elm?.getBoundingClientRect();
-      this.ui.hand(r ? { x: r.left + r.width / 2, y: r.top + r.height / 2 } : null);
-    } else this.ui.hand(null);
+    this.tutTarget = typeof target === 'string' ? target : null;
+    if (this.tutTarget) this.ui.root.querySelector(this.tutTarget)?.classList.add('tut-glow');
+    this.ui.hand(null);
   }
 
+  /** the first-job tutorial is running */
+  private get tutOn() {
+    return !this.save.tutorialDone && this.job?.def.n === 1;
+  }
+
+  /** the button the tutorial points at (its hand follows it while it is on screen) */
+  private tutTarget: string | null = null;
+
   private endTutorial(save: boolean) {
+    this.tutTarget = null;
     this.ui.root.querySelectorAll('.tut-glow').forEach((e) => e.classList.remove('tut-glow'));
     this.tut?.close();
     this.tut = null;
@@ -434,7 +482,6 @@ export class Play {
     const symptoms = def.faults.map((f) => t(def.mod === 'misleading' && FAULTS[f].misleads ? `fault.${f}.mislead` : `fault.${f}.symptom`));
     this.ui.showTicket(def, symptoms);
     sfx.whoosh();
-    this.tutorial('ticket');
     await clock.wait(0.3);
     while (!(await this.diagnoseLoop()));
     return this.handBack();
@@ -463,7 +510,10 @@ export class Play {
     const j = this.job;
     const anyFixed = j.fixed.size > 0;
     if (window.innerHeight > window.innerWidth) this.ui.compactTicket(j.clues.size === 0 && !anyFixed);
-    this.ui.prompt(anyFixed ? t('prompt.fixedMore') : j.clues.size ? t('prompt.diagnoseMore') : t('prompt.diagnose'));
+    const installed = anyFixed || j.wrong.length > 0;
+    this.ui.steps(installed ? 'test' : 'diagnose');
+    const hintKey = installed ? 'prompt.fixedMore' : j.clues.size ? 'prompt.diagnoseMore' : 'prompt.diagnose';
+    this.hint(hintKey);
     const choice = await new Promise<{ k: 'tool'; t: ToolId } | { k: 'hint' } | { k: 'repair' } | { k: 'test' }>((res) => {
       this.ui.toolbar({
         tools: this.toolsFor().map((id) => ({ id, used: j.clues.has(id), locked: !!TOOLS[id].upgrade && !owns(this.save, TOOLS[id].upgrade!), minutes: j.toolMinutes(id) })),
@@ -479,14 +529,16 @@ export class Play {
         repairReady: j.clues.size > 0 && !anyFixed,
         testReady: anyFixed || j.wrong.length > 0,
       });
-      if (this.tut) {
+      if (this.tutOn) {
         if (!j.clues.size) this.tutorial('tool', '[data-tool=tester]');
         else if (!anyFixed) this.tutorial('repair', '[data-tool=repair]');
         else this.tutorial('test', '[data-tool=test]');
       }
     });
     this.ui.toolbar(null);
-    this.ui.prompt(null);
+    // the hint is done once the player made the move it asked for
+    if ((choice.k === 'tool' && hintKey === 'prompt.diagnose') || (choice.k === 'repair' && hintKey === 'prompt.diagnoseMore') || (choice.k === 'test' && hintKey === 'prompt.fixedMore')) this.hintDone(hintKey);
+    else this.ui.prompt(null);
     if (choice.k === 'tool') {
       await this.useTool(choice.t, false);
       return false;
@@ -505,8 +557,10 @@ export class Play {
     }
     if (choice.k === 'test') return this.testDrive();
     const sheet = this.ui.partsSheet(this.ui.money, j.def.car, ADS);
-    if (this.tut) this.tutorial('part', '[data-part=battery]');
+    if (this.tutOn) this.tutorial('part', '[data-part=battery]');
     const pick = await sheet;
+    if (this.tut) this.tut.close();
+    this.tutTarget = null;
     if (!pick) return false;
     let free = false;
     if (pick.free) {
@@ -668,11 +722,11 @@ export class Play {
       [0, 'pos', 'prompt.testerPos'],
       [1, 'neg', 'prompt.testerNeg'],
     ] as const) {
-      this.ui.prompt(t(key));
+      this.hint(key);
       const obj = this.bay.object(term);
-      this.markerFor = obj;
+      this.mark(obj);
       this.expected = term;
-      if (this.tut) this.tutorial('leads');
+      if (this.tut) this.tut.close();
       this.tagsFor = [
         { obj: this.bay.pos.group, text: '+', color: '#d6453b' },
         { obj: this.bay.neg.group, text: '−', color: '#30333a' },
@@ -686,12 +740,13 @@ export class Play {
           mode: 'tap',
           guard: () => {
             sfx.bad();
-            this.ui.toast(t(i === 0 ? 'toast.redPos' : 'toast.blackNeg'), 'bad');
+            this.ui.flashHint(t(i === 0 ? 'toast.redPos' : 'toast.blackNeg'));
             return false;
           },
         },
       ]);
       this.expected = null;
+      this.hintDone(key);
       sfx.clink();
       tst.group.updateMatrixWorld(true);
       const local = tst.group.worldToLocal(obj.getWorldPosition(V(0, 0, 0)).add(V(0, 0.02, 0)));
@@ -709,7 +764,7 @@ export class Play {
     tst.screen.draw(value.toFixed(1), bad ? '#ff8a7a' : '#9fe7b5', t(bad ? 'screen.weak' : 'screen.good'));
     await clock.wait(0.5);
     this.ui.prompt(null);
-    if (this.tut) this.tutorial('clue');
+    if (this.tutOn) this.tutorial('clue');
   }
 
   private async testerDone() {
@@ -722,6 +777,7 @@ export class Play {
   // ---------- test drive ----------
   private async testDrive(): Promise<boolean> {
     this.phase = 'test';
+    this.ui.steps('test');
     this.ui.compactTicket(true);
     this.endTutorialStep('test');
     await this.stage.rig.go(this.shots().test, 0.9);
@@ -764,6 +820,7 @@ export class Play {
   // ---------- hand back + payment ----------
   private async handBack(): Promise<'next' | 'menu'> {
     this.phase = 'handback';
+    this.ui.steps(null);
     this.ui.hideTicket();
     await this.stage.rig.go(this.shots().garage, 0.9);
     const r = this.car.root;
@@ -780,7 +837,7 @@ export class Play {
     const j = this.job;
     const p = j.payout();
     this.phase = 'payment';
-    if (this.tut) {
+    if (this.tutOn) {
       this.endTutorial(true);
       clock.later(1.2, () => this.ui.toast(t('tut.done'), 'good', 3));
     }
@@ -809,4 +866,23 @@ export class Play {
     return choice === 'menu' ? 'menu' : 'next';
   }
 
+}
+
+/** a soft round glow sprite (drawn on top) that marks the object to touch */
+function makeHalo() {
+  const c = document.createElement('canvas');
+  c.width = c.height = 64;
+  const g = c.getContext('2d')!;
+  const gr = g.createRadialGradient(32, 32, 4, 32, 32, 32);
+  gr.addColorStop(0, 'rgba(255,240,150,0.0)');
+  gr.addColorStop(0.45, 'rgba(255,225,90,0.55)');
+  gr.addColorStop(0.62, 'rgba(255,215,60,0.9)');
+  gr.addColorStop(1, 'rgba(255,200,40,0)');
+  g.fillStyle = gr;
+  g.fillRect(0, 0, 64, 64);
+  const tex = new THREE.CanvasTexture(c);
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true, depthTest: false, depthWrite: false, blending: THREE.AdditiveBlending }));
+  sp.renderOrder = 10;
+  sp.visible = false;
+  return sp;
 }

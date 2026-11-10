@@ -39,6 +39,8 @@ export interface SaveData {
   daily: { day: string; done: boolean };
   settings: Settings;
   tutorialDone: boolean;
+  /** step hints the player has already followed (they are not shown again) */
+  hintsSeen: string[];
 }
 
 export function newSave(): SaveData {
@@ -53,6 +55,7 @@ export function newSave(): SaveData {
     daily: { day: '', done: false },
     settings: { music: true, sfx: true, lang: null },
     tutorialDone: false,
+    hintsSeen: [],
   };
 }
 
@@ -101,6 +104,7 @@ export function loadSave(portal?: KeyValueStore | null): SaveData {
       daily: { day: typeof s.daily?.day === 'string' ? s.daily.day : '', done: !!s.daily?.done },
       settings: { music: set.music !== false, sfx: set.sfx !== false, lang: typeof set.lang === 'string' ? set.lang : null },
       tutorialDone: !!s.tutorialDone,
+      hintsSeen: Array.isArray(s.hintsSeen) ? s.hintsSeen.filter((x): x is string => typeof x === 'string' && x.length < 40).slice(0, 80) : [],
     };
   } catch {
     return d;
