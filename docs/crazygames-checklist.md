@@ -17,12 +17,16 @@
 
 ## General principles
 - [x] **Controls:** mouse and touch are the main controls. Big buttons (54 px or more), generous touch areas on 3D parts, and it works in landscape and portrait.
+- [x] **Framing on phones:** the camera frames the car and the active part in the free band between the top strips and the bottom toolbar, with steeper, closer views in portrait. Lift posts fade out when they would block the view.
 - [x] **Instant feedback on every tap:**
   - every button gives a click sound and a press animation
   - a tap on a 3D part gives a ring, and a tap on nothing gives a soft "miss" ring and sound
   - bolts ratchet with a progress ring
   - parts thud with dust, the last terminal sparks, a fixed fault sparkles, and payment adds coins and stars
 - [x] **No waiting screens:** after the first load (one loading bar of about 0.9 MB) nothing blocks for more than 1 s. Arrivals and camera moves are short gameplay animations, and readouts close with one tap.
+  - every wait with nothing to do (the car arriving or leaving, a diagnosis tool at work, the test drive) shows a small "Tap to speed up" chip, and a tap plays the rest 4× faster (e2e: "waits are skippable …")
+  - the camera moves on to the next view while the toolbar is already up, so the player never waits for it
+- [x] **No dead ends:** a part can always be ordered; when the player is short of cash it goes on credit and the customer pays parts back (e2e: "short of cash …"). After a failed test drive the Test button stops pulsing and one line says a fault is left.
 - [x] **Saving:** progress is saved automatically under one known localStorage key (or the portal's cloud storage).
 - [x] **Languages:** 10 languages, picked from GamePix.lang(), the CrazyGames locale or the browser language. The player can change it in Settings. CI checks that every language has every key, and an e2e test checks that text fits in de, ru, fr, pl and tr at 390x844 and 1920x1080.
 - [x] **Ads:**
@@ -38,7 +42,7 @@
   - 40 hand-made career jobs, then endless generated jobs
   - two-fault jobs from job 17
   - every 5th job is a tricky customer (misleading, in a rush, picky or VIP)
-  - the job validator checks that no two jobs in a row are identical and that the career changes car type every job
+  - the job validator checks that no two jobs in a row are identical and that the career changes car type every job, and that in jobs 1–10 neighbours never repeat the same hands-on repair
 - [x] **Repetition shrinks with upgrades:**
   - the impact wrench turns all the nuts of a wheel, or all the bolts of a part, with one hold
   - express parts arrive faster

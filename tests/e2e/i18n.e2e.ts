@@ -32,6 +32,8 @@ for (const lang of ['de', 'ru', 'fr', 'pl', 'tr', 'en', 'it', 'es', 'pt', 'nl'])
       await d.click('.readout button');
       await d.until(() => !!document.querySelector('.toolbar'), 40);
       await d.click('[data-tool=repair]');
+      // the sheet opens on the tab of the latest clue; the engine bay tab has the longest names
+      await d.click('.parts-sheet [data-cat=bay]');
       await d.click('[data-part=alternator]');
       await check('parts sheet');
       await d.click('.sheet .btn.ghost');

@@ -55,7 +55,7 @@ for (const [i, lang] of [['3', 'en'], ['4', 'fr'], ['5', 'de']] as const) {
   await ctx.close();
 }
 {
-  const { d, ctx } = await session(browser, gpx, 1920, 1080, 1, '&lang=en&job=3', save({ career: 3 }));
+  const { d, ctx } = await session(browser, gpx, 1920, 1080, 1, '&lang=en&job=4', save({ career: 4 }));
   await d.until(() => !!document.querySelector('.toolbar'), 40);
   await d.useTool('lift', 0.2);
   await d.order('tyre');
