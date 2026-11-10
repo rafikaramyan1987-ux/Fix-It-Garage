@@ -28,6 +28,7 @@ export function overflow(page: Page) {
       const txt = (e.textContent ?? '').trim().slice(0, 40);
       if (r.right > vw + 1 || r.left < -1) bad.push(`outside viewport: <${e.className}> "${txt}"`);
       if (e.matches('.fit, button, .btn, .lang, .tab, .nm, h2, .un') && e.clientWidth > 0 && e.scrollWidth > e.clientWidth + 2 && getComputedStyle(e).overflowX !== 'auto') bad.push(`text overflows: <${e.className}> "${txt}" ${e.scrollWidth}>${e.clientWidth}`);
+      if (e.matches('.hintbar .ht') && e.scrollHeight > e.clientHeight + 2) bad.push(`hint cut (more than 2 lines): "${txt}"`);
     }
     return [...new Set(bad)];
   });
