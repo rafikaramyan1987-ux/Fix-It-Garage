@@ -1,28 +1,51 @@
-/** DOM overlay: HUD, job ticket, toolbar, readouts, parts sheet, payment and title screens. */
+/** DOM overlay for a job: HUD, ticket, toolbar, readouts, parts sheet, payment, prompts, markers. All text via t(). */
 import { clock } from '../app/clock';
-import { PARTS, TOOLS, type JobDef, type PartId, type Reading, type ToolId } from '../game/data';
-import type { Payout } from '../game/job';
+import { CARS, FINDINGS, PARTS, PART_IDS, type CarType, type PartCat, type PartId, type ToolId } from '../game/data';
+import type { Payout, Reading } from '../game/job';
+import type { JobDef } from '../game/jobs';
+import { esc, t } from '../i18n';
 import { avatar, icons } from './icons';
 import './style.css';
 
-const CAR_NAMES = { sedan: 'Family sedan', hatchback: 'Sporty hatchback', van: 'Delivery van' } as const;
-
-function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls = '', html = '') {
+export function el<K extends keyof HTMLElementTagNameMap>(tag: K, cls = '', html = '') {
   const e = document.createElement(tag);
   if (cls) e.className = cls;
   if (html) e.innerHTML = html;
   return e;
 }
 
-const fmtTime = (m: number) => `${Math.floor(m / 60)}:${String(Math.round(m % 60)).padStart(2, '0')}`;
+export const fmtTime = (m: number) => `${Math.floor(m / 60)}:${String(Math.round(m % 60)).padStart(2, '0')}`;
 
+/** a finding's value on a tool screen: a reading or a translated word */
+export const findingValue = (id: keyof typeof FINDINGS) => {
+  const v = FINDINGS[id].value;
+  return v.startsWith('v.') ? t(v) : v;
+};
+
+/** the clue lines of a reading */
+export function readingLines(r: Reading, car: CarType): string[] {
+  if (r.verdict === 'na') return [t(`tool.na.${r.tool}`)];
+  if (r.verdict === 'ok') return [t(r.tool === 'listen' && CARS[car].ev ? 'tool.listen.okEv' : `tool.${r.tool}.ok`)];
+  return r.findings.map((f) => t(`finding.${f}`));
+}
+
+export interface ToolButton {
+  id: ToolId;
+  used: boolean;
+  locked: boolean;
+  minutes: number;
+}
 export interface ToolbarOpts {
-  used: Set<ToolId>;
+  tools: ToolButton[];
   onTool: (t: ToolId) => void;
+  onLocked: (t: ToolId) => void;
+  /** show the rewarded hint button (platform builds only) */
+  hint: boolean;
   onHint: () => void;
   onRepair: () => void;
-  hintLeft: boolean;
+  onTest: () => void;
   repairReady: boolean;
+  testReady: boolean;
 }
 
 export class UI {
@@ -37,9 +60,11 @@ export class UI {
   private ringEl: HTMLElement;
   private ringFg: SVGCircleElement;
   private markerEl: HTMLElement;
+  private handEl: HTMLElement;
   private tagEls: HTMLElement[] = [];
+  private meterEl: HTMLElement | null = null;
   money = 0;
-  onMute: () => boolean = () => false;
+  onPause: () => void = () => {};
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -47,21 +72,27 @@ export class UI {
     const money = el('div', 'pill money', `<span class="ic">${icons.coin}</span><span class="val">0</span>`);
     this.moneyVal = money.querySelector('.val')!;
     this.clockPill = el('div', 'pill clock', `<span class="ic">${icons.clock}</span><span class="val">0:00</span><span class="bonus"></span>`);
-    const mute = el('button', 'iconbtn', icons.sound);
-    mute.setAttribute('aria-label', 'Sound on/off');
-    mute.addEventListener('click', () => {
-      mute.innerHTML = this.onMute() ? icons.mute : icons.sound;
-    });
-    this.hud.append(money, el('div', 'grow'), this.clockPill, mute);
+    const pause = el('button', 'iconbtn', icons.pause);
+    pause.dataset.action = 'pause';
+    pause.setAttribute('aria-label', 'Pause');
+    pause.addEventListener('click', () => this.onPause());
+    this.hud.append(money, el('div', 'grow'), this.clockPill, pause);
     root.append(this.hud);
     this.ringEl = el('div', 'ring hidden', `<svg viewBox="0 0 84 84"><circle class="bg" cx="42" cy="42" r="34"/><circle class="fg" cx="42" cy="42" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg>`);
     this.ringFg = this.ringEl.querySelector('.fg')!;
     this.markerEl = el('div', 'marker hidden', icons.arrow);
-    root.append(this.ringEl, this.markerEl);
+    this.handEl = el('div', 'hand hidden', icons.hand);
+    root.append(this.ringEl, this.markerEl, this.handEl);
   }
 
   showHud(on: boolean) {
     this.hud.classList.toggle('hidden', !on);
+  }
+
+  /** the money pill alone (menus) */
+  showMoney(on: boolean) {
+    this.hud.classList.toggle('hidden', !on);
+    this.hud.classList.toggle('menu-hud', on);
   }
 
   setMoney(n: number) {
@@ -69,7 +100,6 @@ export class UI {
     this.moneyVal.textContent = String(Math.round(n));
   }
 
-  /** count the money up/down over time */
   async countMoney(to: number, dur = 0.8) {
     const from = this.money;
     await clock.tween(dur, (k) => this.setMoney(from + (to - from) * k));
@@ -81,25 +111,28 @@ export class UI {
     this.clockPill.classList.toggle('warn', minutes > target);
   }
 
-  showTicket(job: JobDef, symptom: string, car: keyof typeof CAR_NAMES) {
+  showTicket(job: JobDef, symptoms: string[]) {
     this.ticketEl?.remove();
     const c = job.customer;
-    const t = el(
+    const title = job.daily ? t('hud.daily') : t('hud.job', { n: job.n });
+    const tricky = job.mod ? `<div class="tricky"><b>${esc(t('hud.tricky'))}</b> ${esc(t(`mod.${job.mod}`))}</div>` : '';
+    const two = job.faults.filter((f) => f !== 'scratch').length > 1 ? `<span class="badge">${esc(t('hud.twoFaults'))}</span>` : '';
+    const tk = el(
       'div',
-      'ticket',
-      `<button class="toggle">Clues ▾</button><div class="head"><div class="avatar">${avatar(c.hair, c.skin, c.shirt)}</div><div class="meta"><div class="who">${c.name}</div><div class="car">${CAR_NAMES[car]} · Job #1</div></div></div>
-      <div class="quote">“${symptom}”</div><div class="clues-wrap"><h4><span>Clues</span><span>Target ${fmtTime(job.targetMinutes)}</span></h4><ul class="clues"><li class="empty">Use a tool to find clues</li></ul></div>`,
+      `ticket${job.mod ? ' is-tricky' : ''}`,
+      `<button class="toggle fit">${esc(t('hud.show'))}</button><div class="head"><div class="avatar">${avatar(c.hair, c.skin, c.shirt)}</div><div class="meta"><div class="who">${esc(c.name)}</div><div class="car fit">${esc(t(`car.${job.car}`))} · ${esc(title)}</div></div></div>
+      ${tricky}<div class="quote">${symptoms.map((s) => `“${esc(s)}”`).join('<br>')} ${two}</div><div class="clues-wrap"><h4><span>${esc(t('hud.clues'))}</span><span>${esc(t('hud.target', { time: fmtTime(job.targetMinutes) }))}</span></h4><ul class="clues"><li class="empty">${esc(t('hud.noClues'))}</li></ul></div>`,
     );
-    t.querySelector('.toggle')!.addEventListener('click', () => this.compactTicket(!t.classList.contains('compact')));
-    this.ticketEl = t;
-    this.cluesEl = t.querySelector('.clues');
-    this.root.append(t);
+    tk.querySelector('.toggle')!.addEventListener('click', () => this.compactTicket(!tk.classList.contains('compact')));
+    this.ticketEl = tk;
+    this.cluesEl = tk.querySelector('.clues');
+    this.root.append(tk);
   }
 
   compactTicket(on: boolean) {
     if (!this.ticketEl) return;
     this.ticketEl.classList.toggle('compact', on);
-    this.ticketEl.querySelector('.toggle')!.textContent = on ? 'Clues ▾' : 'Hide ▴';
+    this.ticketEl.querySelector('.toggle')!.textContent = on ? t('hud.show') : t('hud.hide');
   }
 
   hideTicket() {
@@ -107,10 +140,14 @@ export class UI {
     this.ticketEl = null;
   }
 
-  addClue(r: Reading) {
+  /** add or update the clue lines of one tool */
+  setClue(r: Reading, car: CarType) {
     if (!this.cluesEl) return;
     this.cluesEl.querySelector('.empty')?.remove();
-    const li = el('li', r.verdict, `<span class="dot">${r.verdict === 'bad' ? icons.cross : icons.check}</span><span>${r.text}</span>`);
+    this.cluesEl.querySelector(`[data-tool="${r.tool}"]`)?.remove();
+    const cls = r.verdict === 'bad' ? 'bad' : r.verdict === 'ok' ? 'ok' : 'na';
+    const li = el('li', cls, `<span class="dot">${r.verdict === 'bad' ? icons.cross : icons.check}</span><span class="lines">${readingLines(r, car).map(esc).join('<br>')}</span>`);
+    li.dataset.tool = r.tool;
     this.cluesEl.append(li);
   }
 
@@ -127,36 +164,49 @@ export class UI {
     this.toolbarEl = null;
     if (!o) return;
     const bar = el('div', 'toolbar');
-    for (const id of ['tester', 'obd', 'listen', 'lift'] as ToolId[]) {
-      const d = TOOLS[id];
-      const b = el('button', `tool${o.used.has(id) ? ' used' : ''}`, `<span class="ic">${icons[id]}</span><span class="nm">${d.name}</span><span class="cost">+${d.minutes} min</span>`);
-      b.dataset.tool = id;
-      b.addEventListener('click', () => o.onTool(id));
-      bar.append(b);
+    const tools = el('div', 'tools');
+    for (const tb of o.tools) {
+      const b = el(
+        'button',
+        `tool${tb.used ? ' used' : ''}${tb.locked ? ' locked' : ''}`,
+        `<span class="ic">${tb.locked ? icons.lock : icons[tb.id]}</span><span class="nm fit">${esc(t(`tool.${tb.id}`))}</span><span class="cost fit">${esc(tb.locked ? t('tool.locked') : t('tool.min', { n: tb.minutes }))}</span>`,
+      );
+      b.dataset.tool = tb.id;
+      b.addEventListener('click', () => (tb.locked ? o.onLocked(tb.id) : o.onTool(tb.id)));
+      tools.append(b);
     }
-    bar.append(el('div', 'sep'));
-    if (o.hintLeft) {
-      const h = el('button', 'tool hint', `<span class="ic">${icons.bulb}</span><span class="nm">Hint</span><span class="cost"><span class="adtag" style="background:#8b5cf6;color:#fff">AD</span></span>`);
+    const acts = el('div', 'acts');
+    if (o.hint) {
+      const h = el('button', 'act hint', `<span class="ic">${icons.tv}</span><span class="nm fit">${esc(t('ad.hint'))}</span>`);
       h.dataset.tool = 'hint';
       h.addEventListener('click', o.onHint);
-      bar.append(h);
+      acts.append(h);
     }
-    const r = el('button', `tool repair${o.repairReady ? ' pulse' : ''}`, `<span class="ic">${icons.wrench}</span><span class="nm">Repair</span><span class="cost">pick a part</span>`);
+    const r = el('button', `act repair${o.repairReady ? ' pulse' : ''}`, `<span class="ic">${icons.wrench}</span><span class="nm fit">${esc(t('action.repair'))}</span><span class="cost fit">${esc(t('action.repairSub'))}</span>`);
     r.dataset.tool = 'repair';
     r.addEventListener('click', o.onRepair);
-    bar.append(r);
+    acts.append(r);
+    if (o.testReady) {
+      const ts = el('button', 'act test pulse', `<span class="ic">${icons.key}</span><span class="nm fit">${esc(t('action.test'))}</span><span class="cost fit">${esc(t('action.testSub'))}</span>`);
+      ts.dataset.tool = 'test';
+      ts.addEventListener('click', o.onTest);
+      acts.append(ts);
+    }
+    bar.append(tools, acts);
     this.toolbarEl = bar;
     this.root.append(bar);
   }
 
   /** a tool reading in a popup; resolves when closed */
-  readout(tool: ToolId, r: Reading) {
+  readout(tool: ToolId, r: Reading, car: CarType) {
     return new Promise<void>((res) => {
       const shade = el('div', 'shade');
+      const value = r.verdict === 'bad' ? r.findings.map((f) => findingValue(f)).join(' · ') : r.verdict === 'ok' ? t('v.ok') : t('v.na');
+      const tag = r.verdict === 'bad' ? t('readout.problem') : r.verdict === 'ok' ? t('readout.fine') : t('readout.na');
       const card = el(
         'div',
         `readout ${r.verdict}`,
-        `<div class="tname">${icons[tool]}${TOOLS[tool].name}</div><div class="screen">${r.value}</div><div class="tag">${r.verdict === 'bad' ? 'Problem found' : 'Looks fine'}</div><div class="txt">${r.text}</div><button class="btn teal">Got it</button>`,
+        `<div class="tname">${icons[tool]}<span class="fit">${esc(t(`tool.${tool}`))}</span></div><div class="lcd">${esc(value)}</div><div class="tag">${esc(tag)}</div><div class="txt">${readingLines(r, car).map(esc).join('<br>')}</div><button class="btn teal">${esc(t('readout.ok'))}</button>`,
       );
       const close = () => {
         shade.remove();
@@ -169,25 +219,67 @@ export class UI {
     });
   }
 
-  /** pick a part to order; null = cancelled */
-  partsSheet(money: number) {
-    return new Promise<PartId | null>((res) => {
+  /** pick a part, then order it (or get it free with a rewarded ad); null = cancelled */
+  partsSheet(money: number, car: CarType, freeAd: boolean) {
+    return new Promise<{ part: PartId; free: boolean } | null>((res) => {
       const shade = el('div', 'shade');
-      const sheet = el('div', 'sheet', `<h3>Which part is faulty?</h3><p>Order the part your clues point to. Wrong parts are paid by the garage.</p>`);
+      const sheet = el('div', 'sheet parts-sheet', `<h3>${esc(t('parts.title'))}</h3><p>${esc(t('parts.desc'))}</p>`);
+      const tabs = el('div', 'tabs');
       const grid = el('div', 'parts');
-      for (const p of Object.values(PARTS)) {
-        const b = el('button', 'part', `<span class="ic">${icons[p.id]}</span><span><div class="nm">${p.name}</div><div class="pr">$${p.price}</div></span>`);
-        b.dataset.part = p.id;
-        if (p.price > money) b.setAttribute('disabled', '');
-        b.addEventListener('click', () => done(p.id));
-        grid.append(b);
-      }
       const row = el('div', 'row');
-      const cancel = el('button', 'btn ghost', 'Keep checking');
-      cancel.addEventListener('click', () => done(null));
-      row.append(cancel);
-      sheet.append(grid, row);
-      const done = (v: PartId | null) => {
+      let sel: PartId | null = null;
+      const cats: PartCat[] = ['bay', 'wheels', 'under', 'fluids'];
+      const fits = (p: PartId) => {
+        if (p === 'chargeport') return !!CARS[car].ev;
+        if (['alternator', 'starter', 'plugs', 'airfilter', 'thermostat', 'fuelpump', 'muffler', 'catalyst', 'gasket', 'oil'].includes(p)) return !CARS[car].ev;
+        return true;
+      };
+      const renderRow = () => {
+        row.innerHTML = '';
+        const cancel = el('button', 'btn ghost', esc(t('parts.keep')));
+        cancel.addEventListener('click', () => done(null));
+        row.append(cancel);
+        if (!sel) return;
+        const p = PARTS[sel];
+        if (freeAd) {
+          const ad = el('button', 'btn ad small', `${icons.tv.replace('<svg', '<svg width="26" height="26"')}<span class="fit">${esc(t('ad.free'))}</span>`);
+          ad.dataset.action = 'free-part';
+          ad.addEventListener('click', () => done({ part: sel!, free: true }));
+          row.append(ad);
+        }
+        const buy = el('button', 'btn green', esc(t('parts.order', { price: p.price })));
+        buy.dataset.action = 'order';
+        if (p.price > money) buy.setAttribute('disabled', '');
+        buy.addEventListener('click', () => done({ part: sel!, free: false }));
+        row.append(buy);
+      };
+      const renderCat = (cat: PartCat) => {
+        tabs.querySelectorAll('button').forEach((b) => b.classList.toggle('on', b.dataset.cat === cat));
+        grid.innerHTML = '';
+        for (const id of PART_IDS.filter((p) => PARTS[p].cat === cat && p !== 'coolant')) {
+          const ok = fits(id);
+          const b = el('button', `part${sel === id ? ' sel' : ''}${ok ? '' : ' off'}`, `<span class="ic">${icons[id]}</span><span class="pt"><span class="nm fit">${esc(t(`part.${id}`))}</span><span class="pr">$${PARTS[id].price}</span></span>`);
+          b.dataset.part = id;
+          if (!ok) b.title = t(CARS[car].ev ? 'parts.fuelOnly' : 'parts.evOnly');
+          b.addEventListener('click', () => {
+            if (!ok) return;
+            sel = id;
+            grid.querySelectorAll('.part').forEach((x) => x.classList.toggle('sel', (x as HTMLElement).dataset.part === id));
+            renderRow();
+          });
+          grid.append(b);
+        }
+      };
+      for (const c of cats) {
+        const b = el('button', 'tab fit', esc(t(`cat.${c}`)));
+        b.dataset.cat = c;
+        b.addEventListener('click', () => renderCat(c));
+        tabs.append(b);
+      }
+      sheet.append(tabs, grid, row);
+      renderCat('bay');
+      renderRow();
+      const done = (v: { part: PartId; free: boolean } | null) => {
         shade.remove();
         sheet.remove();
         res(v);
@@ -197,10 +289,11 @@ export class UI {
     });
   }
 
-  toast(text: string, kind: 'good' | 'bad' | 'info' = 'info') {
-    const t = el('div', `toast ${kind}`, text);
-    this.root.append(t);
-    clock.later(1.8, () => t.remove());
+  toast(text: string, kind: 'good' | 'bad' | 'info' = 'info', dur = 1.8) {
+    const tt = el('div', `toast ${kind}`, esc(text));
+    tt.style.animationDuration = `${dur}s`;
+    this.root.append(tt);
+    clock.later(dur, () => tt.remove());
   }
 
   ring(x: number, y: number, k: number) {
@@ -221,24 +314,50 @@ export class UI {
     }
   }
 
-  /** small floating labels on 3D points (terminal signs) */
+  /** the tutorial's pointing hand at a screen point (null hides it) */
+  hand(p: { x: number; y: number } | null) {
+    this.handEl.classList.toggle('hidden', !p);
+    if (p) {
+      this.handEl.style.left = `${p.x}px`;
+      this.handEl.style.top = `${p.y}px`;
+    }
+  }
+
   tags(list: { x: number; y: number; text: string; color?: string }[]) {
     while (this.tagEls.length > list.length) this.tagEls.pop()!.remove();
-    list.forEach((t, i) => {
+    list.forEach((tg, i) => {
       let e = this.tagEls[i];
       if (!e) {
         e = el('div', 'tag3d');
         this.root.append(e);
         this.tagEls.push(e);
       }
-      e.textContent = t.text;
-      e.style.color = t.color ?? '';
-      e.style.left = `${t.x}px`;
-      e.style.top = `${t.y}px`;
+      e.textContent = tg.text;
+      e.style.color = tg.color ?? '';
+      e.style.left = `${tg.x}px`;
+      e.style.top = `${tg.y}px`;
     });
   }
 
-  /** one big button at the bottom; resolves when tapped */
+  /** a vertical level gauge for pouring (0..1, green zone lo..hi) */
+  meter(level: number | null, lo = 0.7, hi = 0.85, color = '#f2b134') {
+    if (level === null) {
+      this.meterEl?.remove();
+      this.meterEl = null;
+      return;
+    }
+    if (!this.meterEl) {
+      this.meterEl = el('div', 'meter', `<div class="zone"></div><div class="lvl"></div><div class="mark"></div>`);
+      this.root.append(this.meterEl);
+    }
+    const z = this.meterEl.querySelector<HTMLElement>('.zone')!;
+    z.style.bottom = `${lo * 100}%`;
+    z.style.height = `${(hi - lo) * 100}%`;
+    const l = this.meterEl.querySelector<HTMLElement>('.lvl')!;
+    l.style.height = `${Math.min(1, level) * 100}%`;
+    l.style.background = color;
+  }
+
   centerAction(html: string, cls = 'green', note = '') {
     return new Promise<void>((res) => {
       const wrap = el('div', 'center-action');
@@ -254,26 +373,26 @@ export class UI {
     });
   }
 
-  /** payment screen; resolves with the player's choice */
-  payment(p: Payout, customer: string, canDouble: boolean, onCoins: (n: number) => void) {
-    return new Promise<'next' | 'double'>((res) => {
+  payment(p: Payout, customer: string, thanksKey: string, canDouble: boolean, onStar: (i: number) => void, extra = '') {
+    return new Promise<'next' | 'double' | 'menu'>((res) => {
       const wrap = el('div', 'pay');
-      const lines = [
-        ['Labour', `$${p.labor}`],
-        ['Parts', `$${p.parts}`],
-        ['Time bonus', `$${p.timeBonus}`],
+      const lines: [string, string][] = [
+        [t('pay.labor'), `$${p.labor}`],
+        [t('pay.parts'), `$${p.parts}`],
+        [t('pay.timeBonus'), `$${p.timeBonus}`],
       ];
+      if (p.tips) lines.push([t('pay.tips'), `$${p.tips}`]);
       const card = el(
         'div',
         'paycard',
-        `<h2>Job done!</h2><div class="thanks">“Purrs like a kitten! Thank you!” – ${customer}</div>
+        `<h2>${esc(t('pay.title'))}</h2><div class="thanks">“${esc(t(thanksKey))}” – ${esc(customer)}</div>
         <div class="stars">${[0, 1, 2].map((i) => `<span class="s" data-i="${i}">${i < p.stars ? icons.star : icons.starOff}</span>`).join('')}</div>
-        <div class="lines">${lines.map(([a, b]) => `<div><span>${a}</span><span>${b}</span></div>`).join('')}${p.wasted ? `<div class="neg"><span>Wrong parts (garage pays)</span><span>-$${p.wasted}</span></div>` : ''}<div class="tot"><span>Customer pays</span><span>$${p.total}</span></div></div>
-        ${p.notes.length ? `<div class="notes">${p.notes.join(' · ')}</div>` : ''}<div class="row"></div>`,
+        <div class="lines">${lines.map(([a, b]) => `<div><span class="fit">${esc(a)}</span><span>${b}</span></div>`).join('')}${p.wasted ? `<div class="neg"><span class="fit">${esc(t('pay.wasted'))}</span><span>-$${p.wasted}</span></div>` : ''}<div class="tot"><span class="fit">${esc(t('pay.total'))}</span><span>$${p.total}</span></div></div>
+        ${p.notes.length ? `<div class="notes">${p.notes.map((n) => esc(t(n))).join(' · ')}</div>` : ''}${extra ? `<div class="notes good">${esc(extra)}</div>` : ''}<div class="row"></div>`,
       );
       const row = card.querySelector('.row')!;
       if (canDouble) {
-        const d = el('button', 'btn ad', `${icons.tv.replace('<svg', '<svg width="30" height="30"')} Double payment <span class="adtag">AD</span>`);
+        const d = el('button', 'btn ad', `${icons.tv.replace('<svg', '<svg width="30" height="30"')}<span class="fit">${esc(t('ad.double'))}</span>`);
         d.dataset.action = 'double';
         d.addEventListener('click', () => {
           wrap.remove();
@@ -281,21 +400,25 @@ export class UI {
         });
         row.append(d);
       }
-      const n = el('button', 'btn green big', 'Next customer');
+      const n = el('button', 'btn green big', esc(t('pay.next')));
       n.dataset.action = 'next';
       n.addEventListener('click', () => {
         wrap.remove();
         res('next');
       });
-      row.append(n);
+      const m = el('button', 'btn ghost', esc(t('pay.menu')));
+      m.dataset.action = 'menu';
+      m.addEventListener('click', () => {
+        wrap.remove();
+        res('menu');
+      });
+      row.append(n, m);
       wrap.append(card);
       this.root.append(wrap);
-      // stars pop in one by one
-      card.querySelectorAll<HTMLElement>('.s').forEach((s, i) => clock.later(0.35 + i * 0.25, () => (s.classList.add('on'), i < p.stars && onCoins(i))));
+      card.querySelectorAll<HTMLElement>('.s').forEach((s, i) => clock.later(0.35 + i * 0.25, () => (s.classList.add('on'), i < p.stars && onStar(i))));
     });
   }
 
-  /** coins flying from a screen point to the money pill */
   coins(fromX: number, fromY: number, n = 8) {
     const to = this.moneyVal.getBoundingClientRect();
     for (let i = 0; i < n; i++) {
@@ -303,32 +426,29 @@ export class UI {
       this.root.append(c);
       const dx = (Math.random() - 0.5) * 120,
         dy = -60 - Math.random() * 80;
-      const delay = i * 0.06;
-      void clock.wait(delay).then(() =>
-        clock.tween(0.75, (k) => {
-          const x = fromX + dx * Math.sin(k * Math.PI) * (1 - k) + (to.left - fromX) * k * k;
-          const y = fromY + dy * Math.sin(k * Math.PI) + (to.top - fromY) * k * k;
-          c.style.transform = `translate(${x - 14}px, ${y - 14}px) scale(${1 - k * 0.3})`;
-        }).then(() => c.remove()),
+      void clock.wait(i * 0.06).then(() =>
+        clock
+          .tween(0.75, (k) => {
+            const x = fromX + dx * Math.sin(k * Math.PI) * (1 - k) + (to.left - fromX) * k * k;
+            const y = fromY + dy * Math.sin(k * Math.PI) + (to.top - fromY) * k * k;
+            c.style.transform = `translate(${x - 14}px, ${y - 14}px) scale(${1 - k * 0.3})`;
+          })
+          .then(() => c.remove()),
       );
     }
   }
 
-  title() {
-    return new Promise<void>((res) => {
-      const t = el(
-        'div',
-        'title',
-        `<div class="logo3d"><div class="l1">Fix It<br><span>Garage</span></div><div class="l2">Car repair workshop</div></div><div class="sub">Find the fault. Swap the part. Make them smile.</div>`,
-      );
-      const b = el('button', 'btn big', 'Start shift');
-      b.dataset.action = 'start';
-      b.addEventListener('click', () => {
-        t.remove();
-        res();
-      });
-      t.append(b);
-      this.root.append(t);
-    });
+  /** clear every in-job element (leaving a job) */
+  clearJob() {
+    this.hideTicket();
+    this.prompt(null);
+    this.toolbar(null);
+    this.hideRing();
+    this.marker(null);
+    this.hand(null);
+    this.tags([]);
+    this.meter(null);
+    this.root.querySelectorAll('.readout, .shade, .sheet, .center-action, .pay, .toast').forEach((e) => e.remove());
   }
 }
+

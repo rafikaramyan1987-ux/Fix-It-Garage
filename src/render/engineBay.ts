@@ -7,6 +7,8 @@ import { clock, ease, lerp } from '../app/clock';
 import type { Car } from './cars';
 import { at, cyl, mat, rbox, shade } from './geom';
 import { labelTexture, ScreenTexture } from './textures';
+import type { PartId } from '../game/data';
+import { makeSlot, type Slot } from './slots';
 
 export type BayTarget = 'hood' | 'neg' | 'pos' | 'clamp' | 'old' | 'new';
 
@@ -29,7 +31,7 @@ export function buildBattery(fresh: boolean) {
   const lab = new THREE.Mesh(
     new THREE.PlaneGeometry(0.22, 0.1),
     new THREE.MeshStandardMaterial({
-      map: fresh ? labelTexture('POWER', '#22c27a', '#ffffff', 256, 128, 'bold 52px Fredoka, sans-serif', 'NEW · 12V') : labelTexture('12V', '#8c8f94', '#e8e8e8', 256, 128, 'bold 60px Fredoka, sans-serif', 'OLD'),
+      map: labelTexture('12V', fresh ? '#22c27a' : '#8c8f94', fresh ? '#ffffff' : '#e8e8e8', 256, 128, 'bold 64px Fredoka, Nunito, sans-serif'),
       roughness: 0.6,
     }),
   );
@@ -106,6 +108,11 @@ export class EngineBay {
   readonly pos: Terminal;
   readonly W: number;
   readonly L: number;
+  /** swappable parts in the bay */
+  readonly slots: Partial<Record<PartId, Slot>> = {};
+  /** fluid caps (tap to open) */
+  oilCap: THREE.Mesh | null = null;
+  coolantCap!: THREE.Mesh;
   private hoodOpen = 0;
   private pulseOff: (() => void) | null = null;
   private pulsing: THREE.Object3D[] = [];
@@ -133,38 +140,8 @@ export class EngineBay {
       at(wall, x, -0.04, z);
       g.add(wall);
     }
-    // engine
-    const eng = new THREE.Group();
-    eng.add(rbox(W * 0.42, 0.13, L * 0.62, mat('#8d949e', 0.45, 0.6), 0.02));
-    const cover = rbox(W * 0.36, 0.05, L * 0.5, mat('#ff8a3d', 0.35, 0.2), 0.02);
-    cover.position.y = 0.085;
-    eng.add(cover);
-    for (let i = 0; i < 4; i++) {
-      const rib = rbox(W * 0.3, 0.012, 0.012, mat('#e46f25', 0.4), 0.004);
-      at(rib, 0, 0.115, -L * 0.18 + i * L * 0.12);
-      eng.add(rib);
-    }
-    const cap = cyl(0.03, 0.03, 0.025, mat('#ffd23f', 0.4), 14);
-    at(cap, W * 0.1, 0.125, L * 0.15);
-    eng.add(cap);
-    at(eng, W * 0.12, 0.1, -0.02);
-    // air filter
-    const air = rbox(W * 0.2, 0.09, L * 0.42, mat('#25282e', 0.6), 0.03);
-    at(air, W * 0.38, 0.09, -L * 0.1);
-    const intake = cyl(0.035, 0.035, 0.18, mat('#25282e', 0.6), 12);
-    intake.rotation.z = Math.PI / 2;
-    at(intake, W * 0.28, 0.11, L * 0.22);
-    // coolant reservoir
-    const res = rbox(0.12, 0.1, 0.1, new THREE.MeshStandardMaterial({ color: '#f4f4f4', roughness: 0.2, transparent: true, opacity: 0.75 }), 0.02);
-    at(res, W * 0.38, 0.09, L * 0.33);
-    const liquid = rbox(0.1, 0.05, 0.08, mat('#ff5fa2', 0.3), 0.015);
-    at(liquid, W * 0.38, 0.065, L * 0.33);
-    const resCap = cyl(0.025, 0.025, 0.02, mat('#2f6fd6', 0.4), 12);
-    at(resCap, W * 0.38, 0.15, L * 0.33);
-    // fuse box
-    const fuse = rbox(0.16, 0.08, 0.12, mat('#25282e', 0.6), 0.02);
-    at(fuse, -W * 0.3, 0.07, -L * 0.3);
-    g.add(eng, air, intake, res, liquid, resCap, fuse);
+    if (car.ev) this.buildEv(W, L);
+    else this.buildEngine(W, L);
     shade(g);
 
     // battery at the front-left
@@ -205,6 +182,63 @@ export class EngineBay {
 
     car.body.add(g);
     this.group.visible = false;
+  }
+
+  /** a fuel engine: block, plug rail, alternator, starter, air box, thermostat, hose, reservoir, fuse box */
+  private buildEngine(W: number, L: number) {
+    const g = this.group;
+    const ex = W * 0.12;
+    const block = rbox(W * 0.42, 0.13, L * 0.62, mat('#8d949e', 0.45, 0.6), 0.02);
+    at(block, ex, 0.1, -0.02);
+    const cover = rbox(W * 0.36, 0.05, L * 0.5, mat('#ff8a3d', 0.35, 0.2), 0.02);
+    at(cover, ex, 0.185, -0.02);
+    g.add(block, cover);
+    this.oilCap = cyl(0.03, 0.03, 0.025, mat('#ffd23f', 0.4), 14);
+    at(this.oilCap, ex + W * 0.12, 0.222, L * 0.16);
+    g.add(this.oilCap);
+    this.slots.plugs = makeSlot(g, 'plugs', new THREE.Vector3(ex - 0.02, 0.222, -0.04), [[-0.17, 0, 0], [0.17, 0, 0]]);
+    this.slots.alternator = makeSlot(g, 'alternator', new THREE.Vector3(ex - W * 0.12, 0.12, L / 2 - 0.1), [[-0.07, 0.07, 0], [0.07, 0.07, 0]]);
+    this.slots.starter = makeSlot(g, 'starter', new THREE.Vector3(ex - W * 0.3, 0.09, -0.02), [[0, 0.06, -0.06], [0, 0.06, 0.06]], { rotY: Math.PI / 2 });
+    this.slots.thermostat = makeSlot(g, 'thermostat', new THREE.Vector3(ex + W * 0.17, 0.235, L * 0.17), [[-0.06, 0, 0], [0.06, 0, 0]]);
+    this.slots.hose = makeSlot(g, 'hose', new THREE.Vector3(W * 0.34, 0.12, L / 2 - 0.06), [[-0.15, 0.03, 0], [0.15, 0.03, 0]]);
+    // air box with the filter on top
+    const airbox = rbox(W * 0.2, 0.08, L * 0.42, mat('#25282e', 0.6), 0.03);
+    at(airbox, W * 0.38, 0.06, -L * 0.12);
+    g.add(airbox);
+    this.slots.airfilter = makeSlot(g, 'airfilter', new THREE.Vector3(W * 0.38, 0.115, -L * 0.12), [[0, 0, -0.1], [0, 0, 0.1]], { rotY: Math.PI / 2 });
+    this.buildReservoir(-W * 0.12, -L * 0.3);
+    const fuse = rbox(0.14, 0.08, 0.11, mat('#25282e', 0.6), 0.02);
+    at(fuse, -W * 0.36, 0.07, -L * 0.28);
+    g.add(fuse);
+  }
+
+  /** an electric car: drive unit with orange high-voltage cables, charging module, reservoir */
+  private buildEv(W: number, L: number) {
+    const g = this.group;
+    const unit = rbox(W * 0.4, 0.12, L * 0.55, mat('#59647a', 0.4, 0.5), 0.03);
+    at(unit, W * 0.05, 0.09, -0.04);
+    const lid = rbox(W * 0.34, 0.03, L * 0.45, mat('#2f6fd6', 0.4, 0.3), 0.02);
+    at(lid, W * 0.05, 0.165, -0.04);
+    g.add(unit, lid);
+    for (const dz of [-0.06, 0.06]) {
+      const curve = new THREE.CatmullRomCurve3([new THREE.Vector3(W * 0.25, 0.12, dz), new THREE.Vector3(W * 0.3, 0.2, dz), new THREE.Vector3(W * 0.36, 0.16, dz - 0.05)]);
+      const hv = new THREE.Mesh(new THREE.TubeGeometry(curve, 12, 0.016, 6), mat('#ff8a3d', 0.5));
+      g.add(hv);
+    }
+    this.slots.chargeport = makeSlot(g, 'chargeport', new THREE.Vector3(W * 0.33, 0.1, -L * 0.18), [[-0.11, 0.06, 0.07], [0.11, 0.06, -0.07]]);
+    this.slots.hose = makeSlot(g, 'hose', new THREE.Vector3(W * 0.3, 0.1, L / 2 - 0.07), [[-0.15, 0.03, 0], [0.15, 0.03, 0]]);
+    this.buildReservoir(-W * 0.12, -L * 0.3);
+  }
+
+  private buildReservoir(x: number, z: number) {
+    const g = this.group;
+    const res = rbox(0.12, 0.1, 0.1, new THREE.MeshStandardMaterial({ color: '#f4f4f4', roughness: 0.2, transparent: true, opacity: 0.75 }), 0.02);
+    at(res, x, 0.09, z);
+    const liquid = rbox(0.1, 0.05, 0.08, mat('#ff5fa2', 0.3), 0.015);
+    at(liquid, x, 0.065, z);
+    this.coolantCap = cyl(0.026, 0.026, 0.022, mat('#2f6fd6', 0.4), 12);
+    at(this.coolantCap, x, 0.15, z);
+    g.add(res, liquid, this.coolantCap);
   }
 
   /** world-space position of a bay-local point */
@@ -248,6 +282,8 @@ export class EngineBay {
   hide() {
     this.group.visible = false;
   }
+
+
 
   /** loosen (`up`) or tighten a terminal clamp: the nut climbs / sinks, the clamp lifts off the post */
   async terminal(t: 'neg' | 'pos', loose: boolean) {

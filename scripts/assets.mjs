@@ -10,15 +10,16 @@ import { mkdirSync, statSync } from 'node:fs';
 
 const SRC = 'assets-src/kenney-car-kit/Models/GLB format';
 const OUT = 'src/assets/cars';
-/** car type in the game -> Kenney model */
-export const CARS = { sedan: 'sedan', hatchback: 'hatchback-sports', van: 'van' };
+/** Kenney models used by the 7 car types (see CARS in src/game/data.ts; the classic is a repainted sedan) */
+export const MODELS = ['sedan', 'hatchback-sports', 'van', 'truck', 'sedan-sports', 'suv-luxury'];
 
 await MeshoptEncoder.ready;
 await MeshoptDecoder.ready;
 const io = new NodeIO().registerExtensions(ALL_EXTENSIONS).registerDependencies({ 'meshopt.encoder': MeshoptEncoder, 'meshopt.decoder': MeshoptDecoder });
 mkdirSync(OUT, { recursive: true });
 let total = 0;
-for (const [name, file] of Object.entries(CARS)) {
+for (const file of MODELS) {
+  const name = file;
   const doc = await io.read(`${SRC}/${file}.glb`); // resolves Textures/colormap.png and embeds it on write
   await doc.transform(dedup(), weld(), prune(), quantize(), meshopt({ encoder: MeshoptEncoder, level: 'medium' }));
   const out = `${OUT}/${name}.glb`;

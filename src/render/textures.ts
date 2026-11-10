@@ -200,7 +200,7 @@ export function outsideTexture() {
 }
 
 /** sticker / label: a rounded rectangle with text */
-export function labelTexture(text: string, bg: string, fg: string, w = 256, h = 128, font = 'bold 54px Fredoka, sans-serif', sub?: string) {
+export function labelTexture(text: string, bg: string, fg: string, w = 256, h = 128, font = 'bold 54px Fredoka, Nunito, sans-serif', sub?: string) {
   const [c, g] = canvas(w, h);
   g.fillStyle = bg;
   g.beginPath();
@@ -212,13 +212,14 @@ export function labelTexture(text: string, bg: string, fg: string, w = 256, h = 
   g.textBaseline = 'middle';
   g.fillText(text, w / 2, sub ? h * 0.4 : h / 2);
   if (sub) {
-    g.font = `600 ${Math.round(h * 0.18)}px Fredoka, sans-serif`;
+    g.font = `600 ${Math.round(h * 0.18)}px Fredoka, Nunito, sans-serif`;
     g.fillText(sub, w / 2, h * 0.75);
   }
   return tex(c);
 }
 
 /** an original poster for the garage wall */
+/** an original poster for the garage wall (pictures only, no words, so it suits every language) */
 export function posterTexture(kind: 'tyres' | 'oil' | 'smile') {
   const [c, g] = canvas(256, 360);
   const bg = { tyres: '#ffcf4a', oil: '#4ab3ff', smile: '#ff7a59' }[kind];
@@ -241,9 +242,6 @@ export function posterTexture(kind: 'tyres' | 'oil' | 'smile') {
     g.arc(128, 150, 30, 0, Math.PI * 2);
     g.fill();
     g.fillStyle = '#1f2a44';
-    g.font = 'bold 40px Fredoka, sans-serif';
-    g.fillText('CHECK', 128, 280);
-    g.fillText('PRESSURE', 128, 322);
   } else if (kind === 'oil') {
     g.beginPath();
     g.moveTo(128, 60);
@@ -255,9 +253,6 @@ export function posterTexture(kind: 'tyres' | 'oil' | 'smile') {
     g.ellipse(108, 190, 12, 22, -0.3, 0, Math.PI * 2);
     g.fill();
     g.fillStyle = '#1f2a44';
-    g.font = 'bold 42px Fredoka, sans-serif';
-    g.fillText('FRESH', 128, 296);
-    g.fillText('OIL', 128, 336);
   } else {
     g.fillStyle = '#fff3c4';
     g.beginPath();
@@ -273,9 +268,6 @@ export function posterTexture(kind: 'tyres' | 'oil' | 'smile') {
     g.beginPath();
     g.arc(128, 160, 40, 0.2, Math.PI - 0.2);
     g.stroke();
-    g.font = 'bold 38px Fredoka, sans-serif';
-    g.fillText('HAPPY CARS', 128, 296);
-    g.fillText('HAPPY YOU', 128, 334);
   }
   return tex(c);
 }
@@ -297,11 +289,11 @@ export class ScreenTexture {
     g.fillStyle = '#16302a';
     g.fillRect(0, 0, 256, 160);
     g.fillStyle = color;
-    g.font = 'bold 76px Fredoka, sans-serif';
+    g.font = 'bold 76px Fredoka, Nunito, sans-serif';
     g.textAlign = 'center';
     g.textBaseline = 'middle';
     g.fillText(value, 128, 66);
-    g.font = '600 32px Fredoka, sans-serif';
+    g.font = '600 32px Fredoka, Nunito, sans-serif';
     g.fillText(sub, 128, 130);
     this.texture.needsUpdate = true;
   }

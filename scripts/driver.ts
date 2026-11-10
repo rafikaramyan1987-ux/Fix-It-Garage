@@ -9,7 +9,7 @@ type ToolId = 'tester' | 'obd' | 'listen' | 'lift';
 declare global {
   interface Window {
     __ready?: boolean;
-    __game?: { tick(dt: number, render?: boolean): void; render(): void; targets(): { id: string; x: number; y: number }[]; play: { phase: string; expected: string | null } };
+    __game?: { tick(dt: number, render?: boolean): void; render(): void; targets(): { id: string; x: number; y: number; mode: string }[]; play: { phase: string; expected: string | null }; setLang(l: string): Promise<void> };
   }
 }
 
@@ -108,6 +108,7 @@ export class Driver {
   }
 
   async hold(id: string, sec = 1.05) {
+    sec = Math.max(sec, 0.05);
     const t = await this.target(id);
     await this.tapDot(t.x, t.y);
     await this.page.mouse.move(t.x, t.y);
@@ -144,41 +145,117 @@ export class Driver {
       }
     }
     await this.readoutClose(pause);
-    await this.until(() => !!document.querySelector('.toolbar'), 30);
+    await this.until(() => !!document.querySelector('.toolbar'), 40);
   }
 
-  /** the whole battery swap, acting on whatever the game expects next */
-  async batterySwap(opts: { wrongOrderOnce?: boolean; beat?: number } = {}) {
+  /** pick a part in the parts sheet and order it */
+  async order(part: string, free = false) {
+    await this.click('[data-tool=repair]');
+    await this.tick(0.3);
+    const cat = await this.page.evaluate((p) => {
+      const cats: Record<string, string> = { battery: 'bay', alternator: 'bay', starter: 'bay', plugs: 'bay', airfilter: 'bay', hose: 'bay', thermostat: 'bay', chargeport: 'bay', pads: 'wheels', disc: 'wheels', tyre: 'wheels', tierod: 'under', shock: 'under', muffler: 'under', catalyst: 'under', fuelpump: 'under', gasket: 'under', oil: 'fluids', paint: 'fluids' };
+      return cats[p];
+    }, part);
+    await this.click(`.tab[data-cat=${cat}]`);
+    await this.click(`[data-part=${part}]`);
+    await this.tick(0.2);
+    await this.click(free ? '[data-action=free-part]' : '[data-action=order]');
+  }
+
+  private async rub(id: string) {
+    const t = await this.target(id);
+    await this.tapDot(t.x, t.y);
+    await this.page.mouse.move(t.x - 50, t.y);
+    await this.page.mouse.down();
+    for (let i = 0; i < 80; i++) {
+      const has = await this.page.evaluate((x) => window.__game!.targets().some((q) => q.id === x), id);
+      if (!has) break;
+      await this.page.mouse.move(t.x + (i % 2 ? -50 : 50), t.y + ((i % 4) - 1.5) * 8, { steps: 4 });
+      await this.tick(1 / this.fps);
+    }
+    await this.page.mouse.up();
+  }
+
+  private async pour() {
+    const t = await this.target('pour');
+    await this.page.mouse.move(t.x, t.y);
+    await this.page.mouse.down();
+    for (let i = 0; i < 200; i++) {
+      const ok = await this.page.evaluate(() => {
+        const m = document.querySelector('.meter');
+        if (!m) return true;
+        const lvl = (m.querySelector('.lvl') as HTMLElement).style.height;
+        const z = m.querySelector('.zone') as HTMLElement;
+        return parseFloat(lvl) >= parseFloat(z.style.bottom) + 5;
+      });
+      if (ok) break;
+      await this.tick(1 / this.fps);
+    }
+    await this.page.mouse.up();
+  }
+
+  /** called before each repair step with the step's target id (screenshots) */
+  onStep: ((id: string, mode: string) => Promise<void>) | null = null;
+
+  /** run every repair mini-action, acting on whatever the game expects next */
+  async repair(opts: { wrongOrderOnce?: boolean; beat?: number } = {}) {
     let wrongDone = !opts.wrongOrderOnce;
     const beat = opts.beat ?? 0.25;
-    for (;;) {
+    for (let guard = 0; guard < 400; guard++) {
       const phase = await this.page.evaluate(() => window.__game!.play.phase);
       if (!phase.startsWith('fit:')) return;
-      const has = await this.page.evaluate(() => !!window.__game!.play.expected);
-      if (!has) {
+      const list = await this.page.evaluate(() => window.__game!.targets());
+      const exp = await this.page.evaluate(() => window.__game!.play.expected);
+      if (!list.length || !exp) {
         await this.tick(1 / this.fps);
         continue;
       }
-      const id = await this.expected();
+      const tg = list.find((x) => x.id === exp) ?? list[0];
       await this.tick(beat);
-      if (id === 'hood' || id === 'new') await this.tap(id);
-      else if (id === 'old') await this.lift(id);
+      if (this.onStep) await this.onStep(tg.id, tg.mode);
+      if (tg.id === 'pour') await this.pour();
+      else if (tg.mode === 'tap') await this.tap(tg.id);
+      else if (tg.mode === 'lift') await this.lift(tg.id);
+      else if (tg.mode === 'rub') await this.rub(tg.id);
       else {
-        if (!wrongDone && id === 'neg') {
-          // try the (+) terminal first: refused with sparks
+        if (!wrongDone && tg.id === 'neg') {
           await this.hold('pos', 0.2);
           await this.tick(1.0);
           wrongDone = true;
         }
-        await this.hold(id);
+        await this.hold(tg.id);
       }
       await this.tick(0.05);
     }
+    throw new Error('repair did not finish');
+  }
+
+  /** compat: the battery job */
+  async batterySwap(opts: { wrongOrderOnce?: boolean; beat?: number } = {}) {
+    await this.repair(opts);
+  }
+
+  /** test drive; resolves with true when the job went to payment */
+  async test() {
+    await this.click('[data-tool=test]');
+    await this.click('[data-action=center]');
+    for (let i = 0; i < 40 * this.fps; i++) {
+      const ph = await this.page.evaluate(() => window.__game!.play.phase);
+      if (ph === 'payment') return true;
+      if (ph === 'diagnose' && (await this.page.evaluate(() => !!document.querySelector('.toolbar')))) return false;
+      await this.tick(1 / this.fps);
+    }
+    throw new Error('test drive did not finish');
   }
 
   async startShift() {
     await this.tick(0.5);
-    await this.click('[data-action=start]');
+    await this.click('[data-action=play]');
+  }
+
+  /** skip the first-job tutorial bubble if it is there */
+  async skipTutorial() {
+    if (await this.page.evaluate(() => !!document.querySelector('[data-action=skip-tutorial]'))) await this.click('[data-action=skip-tutorial]');
   }
 
   async waitPhase(p: string, maxSec = 30) {

@@ -9,7 +9,12 @@ import type { Stage } from '../render/stage';
 export interface Target {
   id: string;
   obj: THREE.Object3D;
-  mode: 'tap' | 'hold' | 'lift';
+  mode: 'tap' | 'hold' | 'lift' | 'rub';
+  /** rub: pointer travel (px) needed */
+  rub?: number;
+  /** rub: travel already done in earlier strokes */
+  done?: number;
+  onRub?: (k: number) => void;
   /** seconds to hold */
   hold?: number;
   /** called on press: return false to refuse (wrong order etc.) */
@@ -24,7 +29,7 @@ export interface Target {
 export class Input {
   private targets: Target[] = [];
   private resolve: ((id: string) => void) | null = null;
-  private active: { t: Target; x0: number; y0: number; t0: number; k: number; stop?: () => void } | null = null;
+  private active: { t: Target; x0: number; y0: number; t0: number; k: number; lx: number; ly: number; dist: number; stop?: () => void } | null = null;
   enabled = true;
   /** last pointer position (for the hold ring) */
   x = 0;
@@ -74,7 +79,7 @@ export class Input {
     const t = this.targets.find((x) => x.obj === hit);
     if (!t) return;
     if (t.guard && !t.guard()) return;
-    const a = { t, x0: e.clientX, y0: e.clientY, t0: clock.t, k: 0 } as NonNullable<Input['active']>;
+    const a = { t, x0: e.clientX, y0: e.clientY, t0: clock.t, k: 0, lx: e.clientX, ly: e.clientY, dist: t.done ?? 0 } as NonNullable<Input['active']>;
     this.active = a;
     if (t.mode === 'tap') {
       this.finish(t.id);
@@ -95,6 +100,15 @@ export class Input {
     this.x = e.clientX;
     this.y = e.clientY;
     const a = this.active;
+    if (a && a.t.mode === 'rub') {
+      a.dist += Math.hypot(e.clientX - a.lx, e.clientY - a.ly);
+      a.lx = e.clientX;
+      a.ly = e.clientY;
+      a.k = Math.min(1, a.dist / (a.t.rub ?? 600));
+      a.t.onRub?.(a.k);
+      if (a.k >= 1) this.finish(a.t.id);
+      return;
+    }
     if (!a || a.t.mode !== 'lift') return;
     a.k = Math.max(0, Math.min(1, (a.y0 - e.clientY) / 90));
     a.t.onLift?.(a.k);
@@ -107,6 +121,12 @@ export class Input {
       a.stop?.();
       this.active = null;
       a.t.onHoldCancel?.();
+      return;
+    }
+    if (a.t.mode === 'rub') {
+      // progress is kept: the next stroke continues where this one stopped
+      this.active = null;
+      a.t.done = a.dist;
       return;
     }
     if (a.t.mode === 'lift') {
