@@ -536,6 +536,9 @@ export class Play {
       }
     });
     this.ui.toolbar(null);
+    // the tutorial line of this step is done once the player pressed a button
+    if (this.tut) this.tut.close();
+    this.tutTarget = null;
     // the hint is done once the player made the move it asked for
     if ((choice.k === 'tool' && hintKey === 'prompt.diagnose') || (choice.k === 'repair' && hintKey === 'prompt.diagnoseMore') || (choice.k === 'test' && hintKey === 'prompt.fixedMore')) this.hintDone(hintKey);
     else this.ui.prompt(null);
