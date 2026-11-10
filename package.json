@@ -1,0 +1,44 @@
+{
+  "name": "fix-it-garage",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Fix It Garage - a cozy 3D car repair workshop game for the web",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "build:web": "tsc --noEmit && vite build --mode web",
+    "build:gd": "tsc --noEmit && vite build --mode gd",
+    "build:gamepix": "tsc --noEmit && vite build --mode gamepix",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit && tsc --noEmit -p tsconfig.node.json",
+    "lint": "eslint .",
+    "test": "vitest run",
+    "test:e2e": "playwright test --trace off",
+    "assets": "node scripts/assets.mjs",
+    "shots": "tsx scripts/preview-shots.ts",
+    "video": "tsx scripts/preview-video.ts"
+  },
+  "license": "UNLICENSED",
+  "dependencies": {
+    "@fontsource/fredoka": "^5.3.0",
+    "three": "0.170.0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "@gltf-transform/core": "^4.5.1",
+    "@gltf-transform/extensions": "^4.5.1",
+    "@gltf-transform/functions": "^4.5.1",
+    "@playwright/test": "^1.63.0",
+    "@types/node": "^26.6.6",
+    "@types/three": "0.170.0",
+    "eslint": "^9.39.5",
+    "globals": "^17.14.0",
+    "meshoptimizer": "^1.3.0",
+    "tsx": "^4.23.15",
+    "typescript": "~5.9",
+    "typescript-eslint": "^8.72.2",
+    "vite": "^6.4.6",
+    "vitest": "^3.2.7"
+  }
+}

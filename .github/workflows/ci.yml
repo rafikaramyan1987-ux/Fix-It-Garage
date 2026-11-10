@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - name: Builds (crazygames, web, gd, gamepix)
+        run: |
+          npm run build
+          npm run build:web
+          npm run build:gd
+          npm run build:gamepix
+      - name: No CrazyGames code outside its build
+        run: |
+          ! grep -rqi "sdk.crazygames.com" dist-gd dist-web dist-gamepix
+          ! grep -rqi "gamedistribution.com" dist dist-web dist-gamepix
+      - name: Build size budget (< 8 MB each)
+        run: |
+          for d in dist dist-web dist-gd dist-gamepix; do node scripts/check-size.mjs $d; done
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build:web
+      - run: npm run test:e2e
