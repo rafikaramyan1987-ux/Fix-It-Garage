@@ -1,7 +1,7 @@
 {
   "name": "fix-it-garage",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "description": "Fix It Garage - a cozy 3D car repair workshop game for the web",
   "scripts": {

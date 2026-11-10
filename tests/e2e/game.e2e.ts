@@ -1,19 +1,90 @@
 import { expect, test } from '@playwright/test';
 import { FAULT_PART, hintOverlaps, jobFaults, open, richSave, saved } from './helpers';
 
+const money = async (page: import('@playwright/test').Page) => Number((await page.locator('.pill.money .val').textContent())!.replace('−', '-'));
+
 test('a returning player boots to the main menu; no errors, no ads anywhere in the web build', async ({ page }) => {
   const { d, errors } = await open(page, '', richSave());
   await d.tick(0.3);
   for (const a of ['play', 'garage', 'book', 'daily', 'settings', 'achievements']) await expect(page.locator(`[data-action=${a}]`)).toBeVisible();
   await d.click('[data-action=play]');
   await d.until(() => !!document.querySelector('.toolbar'), 40);
-  await expect(page.locator('[data-tool=hint]')).toHaveCount(0);
-  await expect(page.locator('.btn.ad, .act.hint')).toHaveCount(0);
+  // the hint is there in every build; in the web build it never offers an ad
+  await expect(page.locator('[data-tool=hint]')).toContainText('Free');
+  await d.click('[data-tool=hint]');
+  await d.until(() => !!document.querySelector('.toolbar [data-tool=hint]')?.textContent?.includes('$20'), 20);
+  await d.click('[data-tool=hint]');
+  await expect(page.locator('.dialog.hint-offer')).toBeVisible();
+  await expect(page.locator('[data-action=hint-ad], .btn.ad')).toHaveCount(0);
+  await d.click('.dialog .btn.ghost');
   expect(errors).toEqual([]);
+});
+
+test('first start: the difficulty is asked once (Relaxed recommended), then saved', async ({ page }) => {
+  const { d } = await open(page);
+  await d.until(() => !!document.querySelector('.diffpick'), 20);
+  await expect(page.locator('.diffpick [data-difficulty=relaxed]')).toContainText('Recommended');
+  await d.click('[data-difficulty=expert]');
+  await d.until(() => !!document.querySelector('.toolbar'), 30);
+  expect((await saved(page)).settings.difficulty).toBe('expert');
+  // Expert: the clue board has no colours
+  await expect(page.locator('.ticket.plain')).toHaveCount(1);
+  await page.reload();
+  await page.waitForFunction(() => window.__ready === true);
+  await d.until(() => !!document.querySelector('.toolbar'), 30);
+  await expect(page.locator('.diffpick')).toHaveCount(0);
+});
+
+test('relaxed: clue cards in plain words and colours, the free hint names the next tool, the suspects list leads to the fault', async ({ page }) => {
+  const { d, errors } = await open(page, '&job=5', richSave({ career: 5 }));
+  await d.until(() => !!document.querySelector('.toolbar'), 40);
+  // the free hint: one sentence with the tool and why, the tool glows
+  await d.click('[data-tool=hint]');
+  await d.until(() => !!document.querySelector('.hintbar.is-guide'), 20);
+  await expect(page.locator('.hintbar.is-guide')).toContainText('so');
+  await expect(page.locator('.toolbar .tool.tut-glow')).toHaveAttribute('data-tool', 'tester');
+  await d.useTool('tester', 0.2);
+  await d.useTool('listen', 0.2);
+  await d.useTool('lift', 0.2);
+  // green = normal, orange = suspicious, red = problem
+  await expect(page.locator('.clues li.card.ok')).toHaveCount(1);
+  await expect(page.locator('.clues li.card.warn')).toHaveCount(1);
+  await expect(page.locator('.clues li.card.bad:not(.warn)')).toHaveCount(1);
+  await expect(page.locator('.clues li.card.ok')).toContainText('no leaks');
+  await expect(page.locator('.clues li.card.bad:not(.warn)')).toContainText('12.1 V');
+  // the repair book shortcut opens the faults found so far
+  await d.click('[data-action=quick-book]');
+  await expect(page.locator('.screen.book.quick')).toBeVisible();
+  await d.click('[data-action=book-back]');
+  // jobs 1-10: only 3 suspects, best match first with its reason
+  await d.click('[data-tool=repair]');
+  await d.tick(0.3);
+  await expect(page.locator('.parts-sheet .part')).toHaveCount(3);
+  await expect(page.locator('.parts-sheet .part').first()).toHaveAttribute('data-part', 'alternator');
+  await expect(page.locator('.parts-sheet .part').first()).toContainText('Matches: not charging');
+  await expect(page.locator('.parts-sheet [data-action=all-parts]')).toBeVisible();
+  await d.click('.sheet .btn.ghost');
+  await d.order('alternator');
+  await d.repair({ beat: 0.05 });
+  await d.until(() => !!document.querySelector('[data-tool=test]'), 40);
+  expect(await d.test()).toBe(true);
+  expect(errors).toEqual([]);
+});
+
+test('from job 11 every part is listed, still sorted by the clues', async ({ page }) => {
+  const { d } = await open(page, '&job=12', richSave({ career: 12 }));
+  await d.until(() => !!document.querySelector('.toolbar'), 40);
+  await d.useTool('obd', 0.2);
+  await d.click('[data-tool=repair]');
+  await d.tick(0.3);
+  expect(await page.locator('.parts-sheet .part').count()).toBeGreaterThan(10);
+  await expect(page.locator('.parts-sheet .part').first()).toHaveAttribute('data-part', 'hose');
+  await expect(page.locator('[data-action=all-parts]')).toHaveCount(0);
 });
 
 test('a new player lands straight in the first job; tutorial: battery tester, battery swap, test drive, payment', async ({ page }) => {
   const { d, errors } = await open(page);
+  await d.click('[data-difficulty=relaxed]');
   await d.until(() => !!document.querySelector('.toolbar'), 15);
   await d.tick(0.2);
   await expect(page.locator('[data-action=play]')).toHaveCount(0);
@@ -52,12 +123,17 @@ test('a new player lands straight in the first job; tutorial: battery tester, ba
   expect(errors).toEqual([]);
 });
 
-test('a wrong part is fitted and wasted; the test drive says what is still wrong', async ({ page }) => {
+test('jobs 1-10: a wrong part is refunded with one line why; the test drive says what is still wrong', async ({ page }) => {
   const { d } = await open(page, '', richSave({ career: 3 }));
   await d.startShift();
   await d.until(() => !!document.querySelector('.toolbar'), 40);
+  const before = await money(page);
   await d.order('battery');
   await d.repair({ beat: 0.1 });
+  await d.until(() => [...document.querySelectorAll('.toast')].some((e) => /not the cause/.test(e.textContent ?? '')), 20);
+  await expect(page.locator('.toast').filter({ hasText: 'Refunded' })).toBeVisible();
+  await d.tick(1);
+  expect(await money(page)).toBe(before);
   await d.until(() => !!document.querySelector('[data-tool=test]'), 40);
   expect(await d.test()).toBe(false);
   await expect(page.locator('[data-tool=repair]')).toBeVisible();
@@ -68,12 +144,26 @@ test('a wrong part is fitted and wasted; the test drive says what is still wrong
   await expect(page.locator('.steps')).toHaveAttribute('data-step', 'diagnose');
 });
 
+test('from job 11 a wrong part costs the garage', async ({ page }) => {
+  const { d } = await open(page, '&job=12', richSave({ career: 12 }));
+  await d.until(() => !!document.querySelector('.toolbar'), 40);
+  const before = await money(page);
+  await d.order('battery');
+  await d.repair({ beat: 0.05 });
+  await d.until(() => !!document.querySelector('[data-tool=test]'), 40);
+  await d.tick(1);
+  expect(await money(page)).toBe(before - 80);
+  await expect(page.locator('.toast').filter({ hasText: 'Refunded' })).toHaveCount(0);
+});
+
 test('short of cash: a part can still be ordered on credit (never a dead end)', async ({ page }) => {
   const { d } = await open(page, '&job=2', richSave({ career: 2, money: 10 }));
   await d.until(() => !!document.querySelector('.toolbar'), 40);
   await d.click('[data-tool=repair]');
   await d.tick(0.3);
-  await d.click('.tab[data-cat=wheels]');
+  // no clues yet: the sheet says so, and every part is one tap away
+  await expect(page.locator('.parts-sheet .noclues')).toBeVisible();
+  await d.click('[data-action=all-parts]');
   await d.click('[data-part=pads]');
   await d.tick(0.2);
   await expect(page.locator('.parts-sheet .credit')).toBeVisible();
@@ -132,7 +222,10 @@ test('settings: language, music, sound and reset are saved', async ({ page }) =>
   await d.click('[data-action=music]');
   await d.click('[data-action=sfx]');
   let s = await saved(page);
-  expect(s.settings).toEqual({ music: false, sfx: false, lang: 'fr' });
+  expect(s.settings).toEqual({ music: false, sfx: false, lang: 'fr', difficulty: 'relaxed' });
+  await d.click('[data-difficulty=expert]');
+  expect((await saved(page)).settings.difficulty).toBe('expert');
+  await d.click('[data-difficulty=relaxed]');
   await d.click('[data-action=reset]');
   await d.click('[data-action=confirm]');
   s = await saved(page);

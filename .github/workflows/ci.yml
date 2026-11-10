@@ -19,8 +19,10 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
-      - name: Job validator (every job solvable, clues identify the faults, rewards fit the curve; writes docs/jobs-report.md)
+      - name: Job validator (every job solvable, clues identify the faults, rewards fit the curve, Relaxed suspects put the true faults in the top 3 and the hints alone solve every job; writes docs/jobs-report.md)
         run: npm run validate:jobs
+      - name: Job validator report is up to date
+        run: git diff --exit-code docs/jobs-report.md
       - name: Translations (every language file has all keys of en.json)
         run: npm run check:i18n
       - name: Builds (crazygames, web, gd, gamepix)
@@ -49,7 +51,7 @@ jobs:
           check "$zip" "$RUNNER_TEMP/gpx-zip.js"
       - name: Build size budget (< 8 MB each)
         run: for d in dist dist-web dist-gd dist-gamepix; do node scripts/check-size.mjs $d; done
-      - name: Submission zips (index.html at the root, store text limits)
+      - name: Submission zips (newest of each portal + web is this version, index.html at the root, store text limits)
         run: |
           npm run submission
           npm run submission:check

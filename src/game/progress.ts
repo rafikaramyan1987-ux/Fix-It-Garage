@@ -5,6 +5,7 @@
 import { ACHIEVEMENTS, CAR_TYPES, FAULT_IDS, UPGRADES, UPGRADE_IDS, type AchievementId, type CarType, type FaultId, type UpgradeId } from './data';
 import type { GarageCtx, Payout } from './job';
 import type { JobDef } from './jobs';
+import type { Difficulty } from './diagnosis';
 
 export const SAVE_KEY = 'fixitgarage.save.v1';
 
@@ -24,6 +25,8 @@ export interface Settings {
   sfx: boolean;
   /** chosen language, null = automatic */
   lang: string | null;
+  /** Relaxed (clue colours, suspects list, free first hint) or Expert; null = not chosen yet (plays Relaxed, asked once) */
+  difficulty: Difficulty | null;
 }
 
 export interface SaveData {
@@ -53,7 +56,7 @@ export function newSave(): SaveData {
     ach: [],
     stats: { jobs: 0, perfect: 0, streak: 0, noWaste: 0, tricky: 0, cars: [], earned: 0, daily: 0 },
     daily: { day: '', done: false },
-    settings: { music: true, sfx: true, lang: null },
+    settings: { music: true, sfx: true, lang: null, difficulty: null },
     tutorialDone: false,
     hintsSeen: [],
   };
@@ -102,7 +105,7 @@ export function loadSave(portal?: KeyValueStore | null): SaveData {
         daily: num(st.daily, 0),
       },
       daily: { day: typeof s.daily?.day === 'string' ? s.daily.day : '', done: !!s.daily?.done },
-      settings: { music: set.music !== false, sfx: set.sfx !== false, lang: typeof set.lang === 'string' ? set.lang : null },
+      settings: { music: set.music !== false, sfx: set.sfx !== false, lang: typeof set.lang === 'string' ? set.lang : null, difficulty: set.difficulty === 'expert' || set.difficulty === 'relaxed' ? set.difficulty : null },
       tutorialDone: !!s.tutorialDone,
       hintsSeen: Array.isArray(s.hintsSeen) ? s.hintsSeen.filter((x): x is string => typeof x === 'string' && x.length < 40).slice(0, 80) : [],
     };
@@ -196,6 +199,9 @@ export function finishJob(s: SaveData, job: JobDef, p: Payout, paid: number, wro
   }
   return checkAchievements(s);
 }
+
+/** the difficulty played (Relaxed until the player picks Expert) */
+export const difficultyOf = (s: SaveData): Difficulty => s.settings.difficulty ?? 'relaxed';
 
 export function canBuy(s: SaveData, u: UpgradeId) {
   return !owns(s, u) && s.money >= UPGRADES[u].price;

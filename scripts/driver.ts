@@ -96,6 +96,8 @@ export class Driver {
   async click(selector: string) {
     await this.until(new Function(`return !!document.querySelector(${JSON.stringify(selector)})`) as () => boolean, 30);
     await this.settle();
+    // inside a scrolling list (all parts), bring the button into view first
+    await this.page.locator(selector).first().evaluate((e) => e.closest('.parts') && e.scrollIntoView({ block: 'nearest' }));
     const box = await this.page.locator(selector).first().boundingBox();
     if (!box) throw new Error(`no box for ${selector}`);
     const x = box.x + box.width / 2,
@@ -171,7 +173,9 @@ export class Driver {
       const cats: Record<string, string> = { battery: 'bay', alternator: 'bay', starter: 'bay', plugs: 'bay', airfilter: 'bay', hose: 'bay', thermostat: 'bay', chargeport: 'bay', pads: 'wheels', disc: 'wheels', tyre: 'wheels', tierod: 'under', shock: 'under', muffler: 'under', catalyst: 'under', fuelpump: 'under', gasket: 'under', oil: 'fluids', paint: 'fluids' };
       return cats[p];
     }, part);
-    await this.click(`.tab[data-cat=${cat}]`);
+    // Relaxed mode: one sorted list (the first jobs show only the top 3, with a button for the rest); Expert: tabs
+    if (await this.page.evaluate(() => !!document.querySelector('.parts-sheet .tabs'))) await this.click(`.tab[data-cat=${cat}]`);
+    else if (!(await this.page.evaluate((p) => !!document.querySelector(`.parts-sheet [data-part=${p}]`), part))) await this.click('[data-action=all-parts]');
     await this.click(`[data-part=${part}]`);
     await this.tick(0.2);
     await this.click(free ? '[data-action=free-part]' : '[data-action=order]');

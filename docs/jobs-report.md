@@ -7,6 +7,7 @@ must identify its faults: no other set of the same number of faults that fits th
 **Result: all checks passed.**
 
 Also checked: 100 endless jobs (41-140) and 360 daily jobs (120 days × 3 progress levels).
+Relaxed mode (500 jobs): the suspects list puts every true fault in the top 3 after the fastest diagnosis, after all base tools, and after one of two faults is fixed (old or fresh clues); following only the guided hints solves every job.
 Variety: no two identical jobs in a row (career and endless), and consecutive career jobs always change the car type, and in jobs 1-10 neighbours never repeat the same repair action.
 
 ## Career (40 jobs)

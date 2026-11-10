@@ -20,3 +20,10 @@ Video (390x844, ~30 s, the full job played with real taps and holds): [playable-
 
 Desktop shots are 1920x1080; phone shots are a 390x844 viewport rendered at 2x (780x1688). All are captured from real
 play by `scripts/preview-shots.ts` / `scripts/preview-video.ts` (software WebGL, so no GPU effects are faked).
+
+## Relaxed mode (v1.1.0)
+
+[relaxed-mode-390x844.mp4](relaxed-mode-390x844.mp4): jobs 1, 5, 15 and 21 played in Relaxed mode by a bot that knows
+nothing about cars and only follows the screen (`scripts/playtest/novice.ts`): it picks Relaxed at the first start, takes
+the free hint, reads the coloured clue cards, opens Repair and orders the part marked "Best match", follows the gesture
+hand and taps the pulsing Test button. Job 1 starts from an empty save; jobs 5, 15 and 21 start with `?job=N`.

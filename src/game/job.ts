@@ -42,9 +42,13 @@ export class Job {
   readonly fixed = new Set<FaultId>();
   /** wrong parts fitted (paid by the garage) */
   readonly wrong: PartId[] = [];
+  /** wrong parts refunded (gentle mistakes in the first jobs): not charged to the garage */
+  readonly refunded: PartId[] = [];
   freeParts = 0;
   tests = 0;
   hintUsed = false;
+  /** hints taken this job (the first one is free in Relaxed mode) */
+  hints = 0;
   done = false;
 
   constructor(
@@ -119,6 +123,11 @@ export class Job {
     return f;
   }
 
+  /** a wrong part goes back to the supplier: the garage does not pay for it */
+  refund(part: PartId) {
+    if (this.wrong.filter((p) => p === part).length > this.refunded.filter((p) => p === part).length) this.refunded.push(part);
+  }
+
   addMinutes(m: number) {
     this.minutes += m;
   }
@@ -170,7 +179,7 @@ export class Job {
       else notes.push('pay.note.picky');
     }
     if (this.ctx.booth && this.faults.includes('scratch')) tips += 20;
-    const wasted = this.wrong.reduce((s, p) => s + PARTS[p].price, 0);
+    const wasted = this.wrong.reduce((s, p) => s + PARTS[p].price, 0) - this.refunded.reduce((s, p) => s + PARTS[p].price, 0);
     const parts = this.partsBill();
     const timeBonus = this.timeBonusNow();
     return { labor, parts, timeBonus, tips, wasted, total: labor + parts + timeBonus + tips, stars: stars as 1 | 2 | 3, notes };

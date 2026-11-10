@@ -446,3 +446,88 @@ svg { display: block; }
 .skipchip.fast { background: rgba(31, 157, 145, 0.85); }
 .skipchip.fast .ff { animation: ffpulse 0.4s ease-in-out infinite alternate; }
 @keyframes ffpulse { from { opacity: 0.5; } to { opacity: 1; } }
+
+/* ---- friendly diagnosis ---- */
+:root { --warn: #f08a1c; --warn-bg: #fff1dc; --bad-bg: #ffe7e3; --ok-bg: #e6f7ec; }
+/* clue board: one card per tool reading, green = normal, red = problem, orange = suspicious */
+.clues li.card { align-items: flex-start; border-left: 6px solid #d9cbb5; }
+.clues li.card .dot { width: 30px; height: 30px; border-radius: 9px; background: #fff; box-shadow: 0 2px 0 var(--line); }
+.clues li.card .dot svg { width: 24px; height: 24px; }
+.clues li.card .lines { display: flex; flex-direction: column; gap: 1px; flex: 1; }
+.clues li.card .tl { display: flex; align-items: center; justify-content: space-between; gap: 6px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--ink2); }
+.clues li.card .tn { min-width: 0; overflow-wrap: anywhere; }
+.clues li.card .tone { flex: none; padding: 1px 7px; border-radius: 8px; color: #fff; font-size: 10px; letter-spacing: 0.3px; background: #b9a58c; }
+.clues li.card .cl { font-weight: 600; }
+.clues li.card .cl.bad { color: #b8352c; }
+.clues li.card .cl.warn { color: #a35a06; }
+.clues li.card.ok { border-left-color: var(--green); background: var(--ok-bg); }
+.clues li.card.ok .tone { background: var(--green-d); }
+.clues li.card.bad { border-left-color: var(--red); background: var(--bad-bg); }
+.clues li.card.bad .tone { background: var(--red); }
+.clues li.card.warn { border-left-color: var(--warn); background: var(--warn-bg); }
+.clues li.card.warn .tone { background: var(--warn); }
+.clues li.card.na { opacity: 0.8; }
+/* Expert: no colours */
+.ticket.plain .clues li.card { border-left-color: #d9cbb5; background: #fff; }
+.readout.warn .lcd { color: #ffc070; }
+.readout.warn .tag { background: var(--warn); }
+.readout.plain .lcd { color: #e9e2d2; }
+
+/* the hint button and the guided hint line */
+.act.hint { background: #fff6d6; box-shadow: 0 4px 0 #f1dd9a; color: #8a5a00; width: 96px; }
+.act.hint .ic { width: 34px; height: 34px; }
+.act.hint .ic svg rect { fill: #9a9a9a; }
+.act.hint .ic svg path { fill: #ffd23f; stroke: none; }
+.act.hint .cost { color: #8a5a00; }
+.act.hint.free .cost { color: #fff; background: var(--green); border-radius: 8px; padding: 0 6px; }
+.hintbar.is-guide { background: rgba(32, 96, 92, 0.92); }
+.dialog .adicon.bulb svg rect { fill: #9a9a9a; }
+.dialog .poor { font-size: 14px; color: var(--red); margin-top: -8px; }
+.btn.poor { opacity: 0.5; }
+
+/* the suspects list (Relaxed): one column, best match first, the reason under the top ones */
+.parts.list { grid-template-columns: 1fr; gap: 8px; }
+.parts.list .part { position: relative; padding: 8px 10px; }
+.parts.list .part .ic { width: 40px; height: 40px; }
+.parts.list .part .pt { flex: 1; }
+.parts.list .part .pr { flex: none; }
+.parts.list .part .why { font-size: 13px; color: var(--teal-d); font-weight: 600; line-height: 1.15; overflow-wrap: break-word; }
+.parts.list .part.top { background: #effaf4; box-shadow: 0 4px 0 #bfe8cf; }
+.parts.list .part .side { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; max-width: 40%; }
+.parts.list .part .best { padding: 1px 7px; border-radius: 8px; background: var(--green); color: #fff; font-size: 11px; font-weight: 700; line-height: 1.3; text-align: center; overflow-wrap: break-word; }
+.parts.list .more { padding: 8px; border-radius: 12px; border: 2px dashed var(--line); color: var(--ink2); font-weight: 700; font-size: 14px; overflow-wrap: break-word; }
+.parts.list .noclues { padding: 12px; border-radius: 14px; background: #fff; color: var(--ink2); font-size: 15px; line-height: 1.3; text-align: center; }
+.part.tut-glow { outline: 3px solid var(--gold); }
+
+/* repair book shortcut, difficulty */
+.hud .bookbtn { background: var(--teal); box-shadow: 0 4px 0 var(--teal-d), 0 6px 14px rgba(10, 60, 60, 0.2); }
+.hud .bookbtn svg { width: 28px; height: 28px; }
+.book.quick .btn.wide { margin-top: 10px; }
+.diffs .lang { display: flex; flex-direction: column; align-items: center; gap: 1px; min-width: 0; }
+.diffs .lang small { font-size: 11px; font-weight: 600; opacity: 0.8; overflow-wrap: break-word; line-height: 1.1; }
+.diffpick .pbody { display: flex; flex-direction: column; gap: 12px; }
+.dcard { display: flex; align-items: center; gap: 12px; padding: 14px; border-radius: 18px; background: #fff; box-shadow: 0 4px 0 var(--line); text-align: left; }
+.dcard.relaxed { outline: 3px solid var(--green); }
+.dcard:active { transform: translateY(3px); }
+.dcard .dic { width: 48px; height: 48px; flex: none; border-radius: 14px; display: grid; place-items: center; background: var(--teal); }
+.dcard .dic svg { width: 34px; height: 34px; }
+.dcard .dt { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.dcard .dn { font-size: 20px; font-weight: 700; overflow-wrap: break-word; }
+.dcard .dn em { font-style: normal; font-size: 12px; padding: 1px 8px; border-radius: 8px; background: var(--green); color: #fff; vertical-align: middle; white-space: nowrap; }
+.dcard .dd { font-size: 15px; color: var(--ink2); line-height: 1.25; }
+.diffs { grid-template-columns: 1fr 1fr; }
+
+/* full screens sit above the hint line and the pointing hand */
+.screen { z-index: 41; }
+@media (orientation: portrait) { .parts-sheet { max-height: calc(100vh - 96px - var(--safe-t) - var(--safe-b)); } }
+@media (orientation: portrait) {
+  /* hint · repair · test in one row: the hint is a narrow column (icon, name, "Free" / price) */
+  .acts .act .ic { width: 26px; height: 26px; }
+  .acts .act { padding: 4px 6px; gap: 5px; }
+  .acts .act .nm { font-size: 13px; }
+  .acts .act.hint { flex: 0.75; flex-direction: column; gap: 1px; padding: 4px 2px; }
+  .acts .act.hint .ic { width: 22px; height: 22px; }
+  .acts .act.hint .nm { font-size: 12px; text-align: center; }
+  .acts .act.hint .cost { display: block; font-size: 10px; }
+}
+.hintbar.is-guide .ht { -webkit-line-clamp: 3; }
