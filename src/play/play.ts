@@ -170,6 +170,7 @@ export class Play {
       if (this.engineOn && !this.car.ev && Math.random() < dt * 5) s.fx.smoke(this.car.tailpipe(), V(0, 0, -1), 1, '#f0f0f0');
     }
     this.frameInsets();
+    this.skipFrame();
     s.rig.apply(tt, dt);
     fadePosts(s.garage.lift, s.rig.camera.position, s.rig.target, dt || 1);
     this.ui.marker(null);
@@ -217,29 +218,38 @@ export class Play {
    * A small "tap to speed up" chip appears when the wait is more than a moment.
    */
   private skipN = 0;
-  private skipSeg = 0;
+  /** game time since the player last had something to do inside a skippable stretch */
+  private skipIdle = 0;
   async skippable<T>(p: Promise<T>): Promise<T> {
-    if (this.skipN++ === 0) {
-      const seg = ++this.skipSeg;
-      clock.later(0.5, () => {
-        if (this.skipN > 0 && seg === this.skipSeg) this.ui.skipChip(clock.scale > 1 ? 'fast' : 'on');
-      });
-    }
+    if (this.skipN++ === 0) this.skipIdle = clock.t;
     try {
       return await p;
     } finally {
       if (--this.skipN === 0) {
-        this.skipSeg++;
         clock.scale = 1;
         this.ui.skipChip(null);
       }
     }
   }
 
+  /** the player's turn (something to touch) inside a skippable stretch: back to normal speed, no chip */
+  private get playerTurn() {
+    return this.input.current().length > 0 || this.paused;
+  }
+
   speedUp() {
-    if (this.skipN <= 0 || this.paused) return;
+    if (this.skipN <= 0 || this.playerTurn) return;
     clock.scale = 4;
     this.ui.skipChip('fast');
+  }
+
+  private skipFrame() {
+    if (this.skipN <= 0) return;
+    if (this.playerTurn) {
+      this.skipIdle = clock.t;
+      clock.scale = 1;
+      this.ui.skipChip(null);
+    } else if (clock.t - this.skipIdle > 0.5) this.ui.skipChip(clock.scale > 1 ? 'fast' : 'on');
   }
 
   /** parts fitted at the last failed test drive (-1: not tested yet) */
@@ -633,7 +643,8 @@ export class Play {
       if (!free) return false;
       this.ui.toast(t('toast.freePart'), 'good');
     }
-    await this.repairs.orderAndFit(pick.part, free);
+    // the whole fitting is skippable between the player's own moves (part drop, camera moves, bolts spinning)
+    await this.skippable(this.repairs.orderAndFit(pick.part, free));
     return false;
   }
 

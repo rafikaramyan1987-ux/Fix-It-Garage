@@ -441,7 +441,7 @@ svg { display: block; }
 }
 
 /* a skippable wait: a tap anywhere speeds it up */
-.skipchip { position: absolute; left: 50%; bottom: calc(18px + var(--safe-b)); transform: translateX(-50%); display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 16px; background: rgba(40, 30, 20, 0.55); color: #fff; font-size: 14px; font-weight: 700; pointer-events: none; z-index: 30; animation: fade 0.25s ease both; white-space: nowrap; max-width: calc(100vw - 32px); }
+.skipchip { position: absolute; left: 50%; bottom: calc(60px + var(--safe-b)); transform: translateX(-50%); display: flex; align-items: center; gap: 6px; padding: 6px 14px; border-radius: 16px; background: rgba(40, 30, 20, 0.55); color: #fff; font-size: 14px; font-weight: 700; pointer-events: none; z-index: 30; animation: fade 0.25s ease both; white-space: nowrap; max-width: calc(100vw - 32px); }
 .skipchip .ff { font-size: 11px; letter-spacing: -2px; }
 .skipchip.fast { background: rgba(31, 157, 145, 0.85); }
 .skipchip.fast .ff { animation: ffpulse 0.4s ease-in-out infinite alternate; }

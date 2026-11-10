@@ -90,6 +90,12 @@ export class Repairs {
     p.hint(promptKey);
     p.expected = expected ?? targets[0]?.id ?? null;
     const mk = marker ?? targets.find((x) => x.id === p.expected)?.obj ?? targets[0]?.obj ?? null;
+    // safety net: never wait on something the player cannot see
+    if (mk) {
+      const w = mk.getWorldPosition(V(0, 0, 0));
+      const at = p.stage.project(w);
+      if (at.x < 8 || at.y < 8 || at.x > window.innerWidth - 8 || at.y > window.innerHeight - 8) await this.rig.go({ target: w, dir: V(1, 0.7, 0.8), radius: 0.6 }, 0.5);
+    }
     p.mark(mk);
     this.bay.pulse(mk ? [mk] : []);
     const id = await p.input.interact(targets);
@@ -192,10 +198,10 @@ export class Repairs {
     await this.act(promptKey, [{ id: 'old', obj, mode: 'lift', onLift: (k) => (obj.position.y = y0 + k * 0.1) }], 'old', obj);
   }
 
-  private async tapNew(fresh: THREE.Object3D, promptKey = 'prompt.placeNew', frameWith?: THREE.Vector3) {
+  private async tapNew(fresh: THREE.Object3D, promptKey = 'prompt.placeNew', frameWith?: THREE.Vector3, dir = V(-0.35, 1.5, 0.9)) {
     if (frameWith) {
       const b = fresh.getWorldPosition(V(0, 0, 0));
-      await this.rig.go({ target: frameWith.clone().lerp(b, 0.5), dir: V(-0.35, 1.5, 0.9), radius: frameWith.distanceTo(b) / 2 + 0.45, portraitShift: 0.05 }, 0.7);
+      await this.rig.go({ target: frameWith.clone().lerp(b, 0.5), dir, radius: frameWith.distanceTo(b) / 2 + 0.45, portraitShift: 0.05 }, 0.7);
     }
     await this.act(promptKey, [{ id: 'new', obj: fresh, mode: 'tap' }], 'new', fresh);
   }
@@ -233,7 +239,7 @@ export class Repairs {
     await this.rig.go({ target: btn.getWorldPosition(V(0, 0, 0)).add(V(-0.6, -0.2, 0)), dir: V(0.9, 0.5, 1), radius: 1.3, portraitShift: 0.1 }, 0.7);
     await this.act(up ? 'prompt.raise' : 'prompt.lower', [{ id: up ? 'up' : 'down', obj: btn, mode: 'tap' }], up ? 'up' : 'down', btn);
     sfx.tap();
-    await this.p.raise(up, height);
+    await this.p.skippable(this.p.raise(up, height));
   }
 
   // ---------- battery ----------
@@ -454,12 +460,16 @@ export class Repairs {
       newWheel.position.copy(cartPos).add(V(0, 0.15, 0));
       p.stage.scene.add(newWheel);
       fresh.removeFromParent();
-      await this.tapNew(newWheel, 'prompt.newWheel', c.world(w.center.x, w.center.y, w.center.z));
+      await this.tapNew(newWheel, 'prompt.newWheel', c.world(w.center.x, w.center.y, w.center.z), V(1, 0.75, 0.6));
       p.props.push(wheelObj);
     } else {
       await this.rig.go(p.shots().wheel, 0.6);
       await this.brakeSwap(brake, fresh);
       newWheel = wheelObj;
+      // frame the hub and the wheel waiting on the floor together
+      const hub = c.world(w.center.x, w.center.y, w.center.z);
+      const wb = wheelObj.getWorldPosition(V(0, 0, 0));
+      await this.rig.go({ target: hub.clone().lerp(wb, 0.5), dir: V(1, 0.75, 0.6), radius: hub.distanceTo(wb) / 2 + 0.45, portraitShift: 0.05 }, 0.6);
       await this.act('prompt.wheelOn', [{ id: 'wheel', obj: wheelObj, mode: 'tap' }], 'wheel', wheelObj);
     }
     // wheel back onto the hub
@@ -584,7 +594,7 @@ export class Repairs {
     });
     p.props.push(oldObj);
     sfx.thud();
-    await this.tapNew(fresh, 'prompt.placeNew', start);
+    await this.tapNew(fresh, 'prompt.placeNew', start, V(1, 0.75, 0.6));
     sfx.whoosh();
     const homeLocal = p.car.body.worldToLocal(start.clone());
     const fstart = fresh.getWorldPosition(V(0, 0, 0));
@@ -611,6 +621,8 @@ export class Repairs {
       else w.pads.position.set(c0.x - 0.01 + (1 - k) * 0.08, c0.y + (1 - k) * 0.12, c0.z);
     });
     w.caliperBolts.forEach((b) => (b.visible = true));
+    // back to the wheel close-up: the caliper bolts are hidden from the overview
+    await this.rig.go(p.shots().wheel, 0.5);
     const left = new Set([0, 1]);
     while (left.size) {
       const id = await this.act(
