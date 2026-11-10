@@ -32,10 +32,17 @@ const fail = (m) => {
 const ok = (m) => console.log(`  ✓ ${m}`);
 const expect = (cond, msg, detail = '') => (cond ? ok(msg) : fail(`${msg}${detail ? ` (${detail})` : ''}`));
 
-/** the Playgama platform SDK as Bridge's playgama adapter uses it; ads open for 1.5 s, the rewarded outcome is set by the test */
+/** the Playgama platform SDK as Bridge's playgama adapter uses it; ads open for 3 s, the rewarded outcome is set by the test */
 const STUB = `(() => {
-  let cb = () => {};
+  let f = () => {};
   const log = (window.__stubLog = []);
+  // the game's audio state 300 ms into each ad, sampled in the page (independent of how busy the test machine is)
+  window.__adSamples = {};
+  const cb = (type, state) => {
+    f(type, state);
+    if (state === 'open')
+      setTimeout(() => (window.__adSamples[type] = { muted: window.__playgama.muted, paused: window.__playgama.paused, ctx: (window.__ctxs || []).map((c) => c.state) }), 300);
+  };
   window.__rewardedOutcome = 'complete';
   window.PLAYGAMA_SDK = {
     platformService: {
@@ -48,18 +55,18 @@ const STUB = `(() => {
     },
     advService: {
       configureAdFrequency: async () => true,
-      subscribeToAdStateChanges: (f) => (cb = f),
+      subscribeToAdStateChanges: (g) => (f = g),
       showInterstitial() {
         log.push('showInterstitial');
         setTimeout(() => cb('interstitial', 'open'), 50);
-        setTimeout(() => cb('interstitial', 'close'), 1500);
+        setTimeout(() => cb('interstitial', 'close'), 3000);
       },
       showRewarded() {
         const outcome = window.__rewardedOutcome;
         log.push('showRewarded:' + outcome);
         setTimeout(() => cb('rewarded', 'open'), 50);
-        if (outcome === 'complete') setTimeout(() => cb('rewarded', 'rewarded'), 1400);
-        setTimeout(() => cb('rewarded', 'close'), 1500);
+        if (outcome === 'complete') setTimeout(() => cb('rewarded', 'rewarded'), 2900);
+        setTimeout(() => cb('rewarded', 'close'), 3000);
       },
       showAdvancedBanners: async () => {},
       hideAdvancedBanners() {},
@@ -175,25 +182,21 @@ if (only !== 'mock') {
     await frame.evaluate(() => (window.__playgama.lastMidgame = 0)); // the 2-minute gap is skipped for the test
     await d.click('[data-action=double]');
     await d.click('[data-action=watch]'); // the game's one-line notice before the first rewarded ad
-    await waitLog(frame, 'rewarded:opened');
-    await frame.waitForTimeout(500);
-    const during1 = await state(frame);
     await waitLog(frame, 'rewarded:closed');
+    const during1 = await frame.evaluate(() => window.__adSamples.rewarded);
     await d.tick(0.2);
     const toast = await frame.locator('.toast').allInnerTexts();
     await d.tick(1.6);
     const v1 = await game.money(frame);
     expect(v1 === v0 + total, 'cancelled rewarded ad: no reward (payment not doubled)', `${v0} + ${total} → ${v1}`);
-    expect(during1.muted && during1.paused, 'muted + game paused while the rewarded ad is open', JSON.stringify(during1));
+    expect(during1?.muted && during1.paused, 'muted + game paused while the rewarded ad is open', JSON.stringify(during1));
     expect(toast.some((x) => /werbung/i.test(x)), 'the game says no ad is available right now (2.5 s)', toast.join(' | '));
 
     // between levels: the interstitial
     await d.tick(1.5);
-    await waitLog(frame, 'interstitial:opened');
-    await frame.waitForTimeout(400);
-    const during2 = await state(frame);
-    expect(during2.muted && during2.paused, 'muted + game paused while the interstitial is open', JSON.stringify(during2));
     await waitLog(frame, 'interstitial:closed');
+    const during2 = await frame.evaluate(() => window.__adSamples.interstitial);
+    expect(during2?.muted && during2.paused, 'muted + game paused while the interstitial is open', JSON.stringify(during2));
     await game.nextLevelOpened(frame, page);
     const log3 = await frame.evaluate(() => window.__playgama.log.slice());
     expect(log3.includes('interstitial:closed'), 'interstitial between levels shown and closed, next level opened', log3.join(','));
