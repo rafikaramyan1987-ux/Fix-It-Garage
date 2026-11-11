@@ -25,8 +25,8 @@ Screenshots (the same four moments at both sizes; all real gameplay, no menus or
 
 Promos: the real 3D title scene with the game logo, rendered natively at 1920x1080, 1080x1920 and 760x570.
 
-Video: one continuous, unedited recording of real play (career job 4, a sedan with a flat tyre), no intro, no menus,
-no sound. The car rolls in at once, the lift reveals the nail in the tyre, the tyre is ordered and the wheel nuts come
+Video: one continuous recording of real play (career job 4, a sedan with a flat tyre), no cuts, no intro, no menus,
+no sound; the 33.9 s take is evenly sped up ×1.21 to fit Y8's 20–30 s. The car rolls in at once, the lift reveals the nail in the tyre, the tyre is ordered and the wheel nuts come
 off in a star pattern, all inside Y8's first 20 seconds; then the new wheel goes on, the test drive and the 3-star
 payment. The 960x720 clip is the same scripted take rendered at 4:3, so the interface stays in frame.
 
