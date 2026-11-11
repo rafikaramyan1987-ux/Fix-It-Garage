@@ -144,7 +144,6 @@ if (only !== 'playgama') {
       return { v: typeof v === 'string' ? v.slice(0, 40) : v };
     });
     expect(saved.v, 'progress saved through Bridge Storage (storage.get returns the save)', JSON.stringify(saved));
-    await frame.evaluate(() => (window.__playgama.lastMidgame = 0));
     await game.next(frame, page);
     await game.nextLevelOpened(frame, page);
     const log2 = await frame.evaluate(() => window.__playgama.log.slice());
@@ -181,7 +180,6 @@ if (only !== 'mock') {
     // cancelled: no reward (paid once, not twice), "Gerade keine Werbung da" for 2.5 s, the game goes on
     const v0 = await game.money(frame);
     await frame.evaluate(() => (window.__rewardedOutcome = 'cancel'));
-    await frame.evaluate(() => (window.__playgama.lastMidgame = 0)); // the 2-minute gap is skipped for the test
     await d.click('[data-action=double]');
     await d.click('[data-action=watch]'); // the game's one-line notice before the first rewarded ad
     await waitLog(frame, 'rewarded:closed');
@@ -194,14 +192,18 @@ if (only !== 'mock') {
     expect(during1?.muted && during1.paused, 'muted + game paused while the rewarded ad is open', JSON.stringify(during1));
     expect(toast.some((x) => /werbung/i.test(x)), 'the game says no ad is available right now (2.5 s)', toast.join(' | '));
 
-    // between levels: the interstitial
+    // Bridge's calls, as the platform SDK saw them: game_ready first, no level_started / gameplay message before it
+    const calls = await frame.evaluate(() => window.__stubLog.filter((x) => x === 'gameReady' || x.startsWith('sendMessage:')));
+    expect(calls.indexOf('gameReady') === 0, 'game_ready reached the platform before any level_started / gameplay message', calls.join(' → '));
+
+    // right after the FIRST finished job: the interstitial (no counter or timer of the game's own; Bridge decides)
     await d.tick(1.5);
     await waitLog(frame, 'interstitial:closed');
     const during2 = await frame.evaluate(() => window.__adSamples.interstitial);
     expect(during2?.muted && during2.paused, 'muted + game paused while the interstitial is open', JSON.stringify(during2));
     await game.nextLevelOpened(frame, page);
     const log3 = await frame.evaluate(() => window.__playgama.log.slice());
-    expect(log3.includes('interstitial:closed'), 'interstitial between levels shown and closed, next level opened', log3.join(','));
+    expect(log3.includes('interstitial:closed'), 'interstitial at the first break between jobs (no game-side throttle), shown and closed, next level opened', log3.join(','));
 
     // watched to the end: the part for free
     await d.click('[data-tool=repair]');

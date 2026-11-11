@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { PlaygamaPlatform, PLAYGAMA_STORAGE_KEYS, type BridgeSdk } from '../../src/app/platform/playgama';
-import { AD_TIMEOUT, MIDGAME_GAP } from '../../src/app/platform/types';
+import { AD_TIMEOUT } from '../../src/app/platform/types';
 import { SAVE_KEY } from '../../src/game/progress';
 
 /** a Playgama Bridge stand-in: `ad` decides what an ad does (it emits Bridge's ad states) */
@@ -130,22 +130,23 @@ describe('Playgama platform (Bridge)', () => {
     expect(bridge.advertisement.showRewarded).not.toHaveBeenCalled();
   });
 
-  it('interstitials: between levels only, never in a level or as a pre-roll, at most one per MIDGAME_GAP', async () => {
+  it('interstitials: at every break between jobs with no gap of the game\'s own (Bridge paces them), never in a level or as a pre-roll', async () => {
     const { pg, bridge } = await setup(watched(false));
     expect(pg.adSlot('preroll')).toBe(false);
-    await pg.midgame('between'); // right after loading: too early
-    expect(bridge.advertisement.showInterstitial).not.toHaveBeenCalled();
-    await vi.advanceTimersByTimeAsync(MIDGAME_GAP);
     pg.gameplayStart();
     await pg.midgame('between'); // in a level
     expect(bridge.advertisement.showInterstitial).not.toHaveBeenCalled();
     pg.gameplayStop();
+    // right after loading, the first finished job's break: requested at once (no game-side gap)
     const p = pg.midgame('between');
     await vi.advanceTimersByTimeAsync(1500);
     await p;
     expect(bridge.advertisement.showInterstitial).toHaveBeenCalledOnce();
-    await pg.midgame('between'); // within the gap
-    expect(bridge.advertisement.showInterstitial).toHaveBeenCalledOnce();
+    // the very next break: requested again; Bridge's minimumDelayBetweenInterstitial decides whether it shows
+    const q = pg.midgame('between');
+    await vi.advanceTimersByTimeAsync(1500);
+    await q;
+    expect(bridge.advertisement.showInterstitial).toHaveBeenCalledTimes(2);
   });
 
   it("platform audio off mutes without pausing; Bridge's pause and a hidden page pause + mute; restore only when nothing is left", async () => {
@@ -204,5 +205,18 @@ describe('Playgama platform (Bridge)', () => {
     expect(pg2.locale()).toBe('fr');
     pg2.gameReady();
     expect(sent).toContain('game_ready');
+  });
+
+  it('records every Bridge call: game_ready is sent before any level_started / gameplay event, even if a job starts behind the loading screen', async () => {
+    const { pg, sent } = await setup(watched(false));
+    pg.gameplayStart();
+    pg.levelEnd(true);
+    pg.gameplayStart();
+    expect(sent).toEqual([]);
+    pg.gameReady();
+    expect(sent).toEqual(['game_ready', 'level_started', 'level_completed', 'level_started']);
+    pg.levelEnd(false);
+    expect(sent.at(-1)).toBe('level_failed');
+    expect(sent.indexOf('game_ready')).toBeLessThan(sent.findIndex((m) => m !== 'game_ready'));
   });
 });
