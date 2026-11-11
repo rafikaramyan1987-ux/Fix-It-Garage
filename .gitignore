@@ -7,3 +7,4 @@ test-results
 playwright-report
 scripts/_*
 dist-playgama
+ci-*

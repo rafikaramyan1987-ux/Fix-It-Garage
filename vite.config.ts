@@ -1,20 +1,20 @@
 import { readFileSync } from 'node:fs';
 import { defineConfig, type Plugin } from 'vite';
 
-const PLATFORMS = ['crazygames', 'gd', 'web', 'gamepix', 'playgama'] as const;
+const PLATFORMS = ['crazygames', 'gd', 'web', 'gamepix', 'playgama', 'gamemonetize', 'y8'] as const;
 type PlatformName = (typeof PLATFORMS)[number];
 
 /** GamePix JS SDK v3 (manual lifecycle): an external script, loaded before the game bundle, in the GamePix build only */
 export const GAMEPIX_SDK_URL = 'https://integration.gamepix.com/sdk/v3/gamepix.sdk.js';
 
 /**
- * Build target portal: `VITE_PLATFORM=crazygames|gd|web|gamepix|playgama`, or `--mode gd` / `--mode web` / `--mode gamepix` /
- * `--mode playgama`;
+ * Build target portal: `VITE_PLATFORM=crazygames|gd|web|gamepix|playgama|gamemonetize|y8`, or `--mode gd` / `--mode web` /
+ * `--mode gamepix` / `--mode playgama` / `--mode gamemonetize` / `--mode y8`;
  * default CrazyGames. The CrazyGames build goes to dist/, the others to dist-<platform>/.
  */
 function platformFor(mode: string): PlatformName {
   const p = process.env.VITE_PLATFORM || (PLATFORMS.includes(mode as PlatformName) ? mode : 'crazygames');
-  if (!PLATFORMS.includes(p as PlatformName)) throw new Error(`unknown VITE_PLATFORM "${p}" (crazygames | gd | web | gamepix | playgama)`);
+  if (!PLATFORMS.includes(p as PlatformName)) throw new Error(`unknown VITE_PLATFORM "${p}" (crazygames | gd | web | gamepix | playgama | gamemonetize | y8)`);
   return p as PlatformName;
 }
 
@@ -73,11 +73,24 @@ function playgamaBridge(): Plugin {
   };
 }
 
+/**
+ * Y8 SDK from Y8's CDN only (docs.y8.com/sdk/intro: `<script src=… async>` in <head>), in the Y8 build only, never
+ * bundled; initialized by src/app/platform/y8.ts. (The GameMonetize build loads its sdk.js from
+ * src/app/platform/gamemonetize.ts at boot, after setting window.SDK_OPTIONS.)
+ */
+export const Y8_SDK_CDN = 'https://cdn.y8.com/minimal-sdk/2-0/y8.min.js';
+function y8Sdk(): Plugin {
+  return {
+    name: 'y8-sdk',
+    transformIndexHtml: { order: 'pre', handler: () => [{ tag: 'script', attrs: { src: Y8_SDK_CDN, async: true }, injectTo: 'head-prepend' }] },
+  };
+}
+
 export default defineConfig(({ mode }) => {
   const platform = platformFor(mode);
   return {
     base: './',
-    plugins: platform === 'gamepix' ? [gamepixSdk()] : platform === 'playgama' ? [playgamaBridge()] : [],
+    plugins: platform === 'gamepix' ? [gamepixSdk()] : platform === 'playgama' ? [playgamaBridge()] : platform === 'y8' ? [y8Sdk()] : [],
     define: { __PLATFORM__: JSON.stringify(platform) },
     assetsInclude: ['**/*.glb'],
     build: {

@@ -1,1 +1,1 @@
-{ "extends": "./tsconfig.json", "compilerOptions": { "types": ["node"] }, "include": ["scripts", "tests", "playwright.config.ts", "vite.config.ts"], "exclude": ["scripts/_*"] }
+{ "extends": "./tsconfig.json", "compilerOptions": { "types": ["node"] }, "include": ["scripts", "tests", "playwright.config.ts", "playwright.gamemonetize.config.ts", "playwright.y8.config.ts", "vite.config.ts"], "exclude": ["scripts/_*"] }

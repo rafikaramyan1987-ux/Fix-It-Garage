@@ -110,8 +110,8 @@ async function boot() {
     },
   };
   if (params.get('view') === 'cover') document.getElementById('ui')!.classList.add('cover-mode');
-  // open-portal web and Playgama builds: the toolbar shrinks to fit narrow landscape frames (style.css `.fit-toolbar`)
-  if (__PLATFORM__ === 'web' || __PLATFORM__ === 'playgama') document.getElementById('ui')!.classList.add('fit-toolbar');
+  // open-portal web, Playgama, GameMonetize and Y8 builds: the toolbar shrinks to fit narrow landscape frames (style.css `.fit-toolbar`)
+  if (__PLATFORM__ === 'web' || __PLATFORM__ === 'playgama' || __PLATFORM__ === 'gamemonetize' || __PLATFORM__ === 'y8') document.getElementById('ui')!.classList.add('fit-toolbar');
   void play.start(params.has('job') ? Number(params.get('job')) : null);
   tick(0);
   progress(1);

@@ -26,9 +26,10 @@ export const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z)
 export const LIFT_UP = 1.3;
 /**
  * rewarded ads exist only in the portal builds (never in the plain web build); in the Playgama build only where
- * Bridge supports them (otherwise the rewarded buttons are hidden)
+ * Bridge supports them, in the Y8 build only once the Y8 SDK is initialized (not with an ad blocker), never in the
+ * GameMonetize build (its SDK has no rewarded ads); otherwise the rewarded buttons are hidden
  */
-export const ads = () => __PLATFORM__ !== 'web' && (__PLATFORM__ !== 'playgama' || sdk.available);
+export const ads = () => __PLATFORM__ !== 'web' && __PLATFORM__ !== 'gamemonetize' && ((__PLATFORM__ !== 'playgama' && __PLATFORM__ !== 'y8') || sdk.available);
 
 export class Play {
   readonly input: Input;
@@ -554,7 +555,11 @@ export class Play {
   async playJob(def: JobDef, careerMode: boolean) {
     for (let d: JobDef | null = def; d; ) {
       const next = await this.runJob(d);
-      if (next === 'menu') break;
+      if (next === 'menu') {
+        // Y8: Menu on the payment screen is a `next` break too (the other builds show no ad there)
+        if (__PLATFORM__ === 'y8') await sdk.midgame('menu');
+        break;
+      }
       await sdk.midgame('between');
       d = careerMode || !d.daily ? careerJob(this.save.career) : null;
     }
