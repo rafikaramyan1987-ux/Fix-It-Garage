@@ -33,22 +33,43 @@ function gamepixSdk(): Plugin {
 }
 
 /**
- * Playgama build: Playgama Bridge 2.4.1 (vendor/playgama-bridge/, the official standalone `playgama` build) as
- * `./playgama-bridge.js`, the first script in <head>, loaded normally (not async), and `playgama-bridge-config.json`
- * beside index.html (Bridge loads it from there).
+ * Playgama build, as Playgama's docs set it up for plain JS (wiki.playgama.com/playgama/bridge-sdk/setup and
+ * bridge-sdk/api "Required steps"):
+ * - Bridge from Playgama's CDN, `https://bridge.playgama.com/v2/stable/playgama-bridge.js` (the recommended option: it
+ *   loads the adapter of the platform the game runs on, the QA Tool's `qa_tool` one included), the first script in
+ *   <head>, loaded normally (not async / defer / module);
+ * - right after it, scripts/playgama/boot.js inlined: `bridge.initialize()`, and the game bundle starts only once that
+ *   has settled (its module script is held as <script type="text/plain" data-playgama-game data-src="…"> until then);
+ * - `playgama-bridge-config.json` beside index.html (Bridge loads it from `./playgama-bridge-config.json`).
  */
+export const PLAYGAMA_BRIDGE_CDN = 'https://bridge.playgama.com/v2/stable/playgama-bridge.js';
+/** scripts/playgama/boot.js without its comment lines (they name the tags it handles) */
+const playgamaBoot = () => readFileSync('scripts/playgama/boot.js', 'utf8').split('\n').filter((l) => !/^\s*\/\//.test(l)).join('\n').trim();
 function playgamaBridge(): Plugin {
   return {
     name: 'playgama-bridge',
     apply: 'build',
+    enforce: 'post',
     transformIndexHtml: {
-      order: 'pre',
-      handler: () => [{ tag: 'script', attrs: { src: './playgama-bridge.js' }, injectTo: 'head-prepend' }],
+      order: 'post',
+      handler: () => [
+        { tag: 'script', attrs: { src: PLAYGAMA_BRIDGE_CDN }, injectTo: 'head-prepend' },
+        { tag: 'script', children: playgamaBoot(), injectTo: 'head-prepend' },
+      ],
     },
-    generateBundle() {
-      this.emitFile({ type: 'asset', fileName: 'playgama-bridge.js', source: readFileSync('vendor/playgama-bridge/playgama-bridge.js') });
+    // hold every game module script until boot.js starts it
+    generateBundle: { order: 'post', handler(_o, bundle) {
       this.emitFile({ type: 'asset', fileName: 'playgama-bridge-config.json', source: readFileSync('scripts/playgama/playgama-bridge-config.json') });
-    },
+      const html = Object.values(bundle).find((a) => a.type === 'asset' && a.fileName.endsWith('.html'));
+      if (!html || html.type !== 'asset' || typeof html.source !== 'string') return;
+      let held = 0;
+      html.source = html.source.replace(/<script type="module"([^>]*)>/g, (_m, attrs: string) => {
+        held++;
+        const src = attrs.match(/\ssrc="([^"]+)"/)?.[1];
+        return `<script type="text/plain" data-playgama-game${src ? ` data-src="${src}"` : ''}>`;
+      });
+      if (!held) throw new Error('playgama build: no game module script to hold until bridge.initialize()');
+    } },
   };
 }
 

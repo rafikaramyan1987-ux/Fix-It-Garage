@@ -1,7 +1,8 @@
-// Local test of the Playgama zip with the real Playgama Bridge 2.4.1 inside it, in two modes:
+// Local test of the Playgama zip with the real Playgama Bridge (from Playgama's CDN, as in the zip), in two modes:
 //  1. Bridge's mock platform (what Bridge runs outside Playgama, e.g. on localhost): the game boots, sends game_ready,
 //     plays job 1, saves through Bridge Storage, shows no rewarded buttons (mock has no rewarded ads) and the
-//     between-levels slot shows no interstitial (the next job opens); no request leaves the local server.
+//     between-levels slot shows no interstitial (the next job opens); no request leaves the local server
+//     but Bridge's own (bridge.playgama.com).
 //  2. Bridge's `playgama` platform (`?platform_id=playgama`) against a stub of the Playgama platform SDK that Bridge
 //     loads (https://playgama.com/platform-sdk/v1.js is answered locally by Playwright, nothing goes out): the
 //     language comes from the platform, a rewarded ad that is cancelled gives nothing (and says so), one watched to
@@ -20,7 +21,7 @@ import { serve } from '../web/serve.mjs';
 
 const args = process.argv.slice(2);
 const only = args.includes('--only') ? args[args.indexOf('--only') + 1] : null;
-const zip = resolve(args[0] && !args[0].startsWith('--') ? args[0] : `submission-playgama/${game.slug}-playgama-v1.zip`);
+const zip = resolve(args[0] && !args[0].startsWith('--') ? args[0] : `submission-playgama/${game.slug}-playgama-v${game.version}.zip`);
 const dir = mkdtempSync(join(tmpdir(), 'playgama-test-'));
 execFileSync('unzip', ['-q', zip, '-d', dir]);
 const server = await serve(dir);
@@ -89,6 +90,7 @@ async function open(query, { stub = false } = {}) {
   page.on('pageerror', (e) => pageErrors.push(e.message));
   await page.route(/^https?:\/\/(?!127\.0\.0\.1)/, (route) => {
     const u = route.request().url();
+    if (u.startsWith('https://bridge.playgama.com/')) return route.continue();
     if (stub && u === 'https://playgama.com/platform-sdk/v1.js') return route.fulfill({ contentType: 'text/javascript', body: STUB });
     external.push(u);
     return route.abort();
@@ -142,7 +144,6 @@ if (only !== 'playgama') {
       return { v: typeof v === 'string' ? v.slice(0, 40) : v };
     });
     expect(saved.v, 'progress saved through Bridge Storage (storage.get returns the save)', JSON.stringify(saved));
-    await frame.evaluate(() => (window.__playgama.lastMidgame = 0));
     await game.next(frame, page);
     await game.nextLevelOpened(frame, page);
     const log2 = await frame.evaluate(() => window.__playgama.log.slice());
@@ -179,7 +180,6 @@ if (only !== 'mock') {
     // cancelled: no reward (paid once, not twice), "Gerade keine Werbung da" for 2.5 s, the game goes on
     const v0 = await game.money(frame);
     await frame.evaluate(() => (window.__rewardedOutcome = 'cancel'));
-    await frame.evaluate(() => (window.__playgama.lastMidgame = 0)); // the 2-minute gap is skipped for the test
     await d.click('[data-action=double]');
     await d.click('[data-action=watch]'); // the game's one-line notice before the first rewarded ad
     await waitLog(frame, 'rewarded:closed');
@@ -192,14 +192,18 @@ if (only !== 'mock') {
     expect(during1?.muted && during1.paused, 'muted + game paused while the rewarded ad is open', JSON.stringify(during1));
     expect(toast.some((x) => /werbung/i.test(x)), 'the game says no ad is available right now (2.5 s)', toast.join(' | '));
 
-    // between levels: the interstitial
+    // Bridge's calls, as the platform SDK saw them: game_ready first, no level_started / gameplay message before it
+    const calls = await frame.evaluate(() => window.__stubLog.filter((x) => x === 'gameReady' || x.startsWith('sendMessage:')));
+    expect(calls.indexOf('gameReady') === 0, 'game_ready reached the platform before any level_started / gameplay message', calls.join(' → '));
+
+    // right after the FIRST finished job: the interstitial (no counter or timer of the game's own; Bridge decides)
     await d.tick(1.5);
     await waitLog(frame, 'interstitial:closed');
     const during2 = await frame.evaluate(() => window.__adSamples.interstitial);
     expect(during2?.muted && during2.paused, 'muted + game paused while the interstitial is open', JSON.stringify(during2));
     await game.nextLevelOpened(frame, page);
     const log3 = await frame.evaluate(() => window.__playgama.log.slice());
-    expect(log3.includes('interstitial:closed'), 'interstitial between levels shown and closed, next level opened', log3.join(','));
+    expect(log3.includes('interstitial:closed'), 'interstitial at the first break between jobs (no game-side throttle), shown and closed, next level opened', log3.join(','));
 
     // watched to the end: the part for free
     await d.click('[data-tool=repair]');

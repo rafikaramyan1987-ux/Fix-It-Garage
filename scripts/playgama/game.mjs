@@ -5,6 +5,8 @@ export default {
   slug: web.slug,
   title: 'Fix It Garage',
   dist: 'dist-playgama',
+  /** the submission zip's version: submission-playgama/<slug>-playgama-v<version>.zip (v1, v2 kept for reference) */
+  version: 3,
   exclude: web.exclude,
   /** the game's query for the tests: `capture` (the test steps the game clock, as in scripts/web/check.mjs) */
   query: 'capture',
