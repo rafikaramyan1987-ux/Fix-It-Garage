@@ -3,7 +3,7 @@
  * One implementation per portal, chosen at build time (`__PLATFORM__`, see vite.config.ts).
  */
 
-export type PlatformName = 'crazygames' | 'gd' | 'web' | 'gamepix' | 'playgama';
+export type PlatformName = 'crazygames' | 'gd' | 'web' | 'gamepix' | 'playgama' | 'gamemonetize' | 'y8';
 
 declare global {
   /** the build target, a string literal at build time (vite.config.ts `define`), so other platforms' branches are dropped */
@@ -13,7 +13,7 @@ declare global {
 /**
  * Where an interstitial may be shown. All of them are outside gameplay and follow a user input:
  * - `between`: Next / Retry on the result screens 
- * - `menu`: Menu on the result screens
+ * - `menu`: Menu on the result screens (Y8 build only: Y8's `next` break)
  * - `preroll`: Play on the title screen
  */
 export type AdSlot = 'between' | 'menu' | 'preroll';

@@ -7,3 +7,5 @@ test-results
 playwright-report
 scripts/_*
 dist-playgama
+ci-*
+submission-y8/media/.frames-*
