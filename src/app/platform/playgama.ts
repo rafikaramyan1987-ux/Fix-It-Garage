@@ -13,7 +13,7 @@
  *   sent right after it (send)
  * - interstitials (`advertisement.showInterstitial()`) at every break between jobs (after Next on the payment screen,
  *   so never during a level and never before the first job is finished), with no counter or timer of the game's own:
- *   how often one shows is Bridge's call (`minimumDelayBetweenInterstitial: 120` in playgama-bridge-config.json), as
+ *   how often one shows is Bridge's call (Bridge's own platform default delay between interstitials (no override in playgama-bridge-config.json)), as
  *   Playgama's interstitial docs require; no pre-roll
  * - rewarded (`advertisement.showRewarded()`) only from the labelled ad buttons (`available` is Bridge's
  *   `isRewardedSupported`, so the buttons are hidden where Bridge has no rewarded ads); the reward is granted only

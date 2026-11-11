@@ -48,8 +48,7 @@ simulation, car, mechanic, repair, garage, puzzle, casual, 3d, family, mobile
   `fixitgarage.save.v1`); `level_started` / `level_completed` (car paid) / `level_failed` (job left from the pause
   menu), always after `game_ready` (one sent before it is held and sent right after it); interstitials at every break
   between jobs (after "Next customer", so never during a job and never before the first job is finished, no pre-roll)
-  with no counter or timer of the game's own: how often one shows is Bridge's call, `minimumDelayBetweenInterstitial:
-  120` in playgama-bridge-config.json (Playgama's interstitial docs); rewarded ads
+  with no counter or timer of the game's own: how often one shows is Bridge's call, Bridge's own platform default delay between interstitials (no override in playgama-bridge-config.json) (Playgama's interstitial docs); rewarded ads
   only from the labelled "Watch an ad: double payment / get this part free / hint" buttons, shown only where Bridge
   supports rewarded ads, with the reward only after Bridge's `rewarded` state; audio muted and the game paused during
   ads, on Bridge's pause event and when the page is hidden; Bridge's audio event mutes.
