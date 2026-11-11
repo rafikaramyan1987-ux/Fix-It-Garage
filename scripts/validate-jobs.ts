@@ -4,7 +4,7 @@ import { reportMarkdown, validate } from '../src/game/validate';
 
 const r = validate();
 writeFileSync('docs/jobs-report.md', reportMarkdown(r));
-console.log(`checked 40 career jobs, ${r.checked.endless} endless jobs, ${r.checked.daily} daily jobs`);
+console.log(`checked 40 career jobs, ${r.checked.endless} endless jobs, ${r.checked.daily} daily jobs; relaxed suspects + hints on ${r.checked.relaxed} jobs`);
 for (const i of r.issues) console.log('ISSUE', i);
 console.log(r.issues.length ? `${r.issues.length} issue(s)` : 'all checks passed');
 process.exit(r.issues.length ? 1 : 0);

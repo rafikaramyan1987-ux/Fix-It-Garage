@@ -12,11 +12,17 @@ test-drive the car and hand it back for money and stars.
   in the garage. Each tool costs workshop minutes; the job has a time bonus.
 - **Repairs:** battery swap ((−) off first, (+) on first), engine-bay parts, underside parts on the lift, wheel change with
   the nuts in a star pattern, brake pads and discs, oil and coolant top-ups, sand/spray/polish paint.
+- **Friendly diagnosis (Relaxed mode, the default):** every tool reading is a clue card in plain words with a colour
+  (green normal, red problem, orange suspicious); Repair lists the parts sorted by how well they match the clues, with the
+  reason under the top ones (jobs 1-10 show the top 3); the first hint of every job is free and names the next tool and
+  why (more hints cost $20, or a rewarded ad in the portal builds); a repair-book button during diagnosis shows the faults
+  found so far; in jobs 1-10 a wrong part is refunded with one line on why it was not the cause. **Expert** mode: no
+  colours, unsorted parts, no free hint, 25% bigger rewards. The choice is asked once at the first start (Settings to change).
 - **Garage upgrades** (tools, impact wrench, express parts, second lift, paint booth, decorations), **daily job** (double
   pay), **repair book**, **13 achievements**, first-job **tutorial**, progress saved under one localStorage key.
 - **10 languages** (en, fr, de, it, es, pt, nl, pl, tr, ru), one JSON file each in `src/i18n/`.
 - **Ads only in the portal builds**, never in the web build: interstitials only between jobs (at most one per 2 minutes),
-  rewarded ads only from buttons the player taps (hint, free spare part, double payment).
+  rewarded ads only from buttons the player taps (extra hint, free spare part, double payment).
 
 Play the web build: https://rafikaramyan1987-ux.github.io/Fix-It-Garage/
 
@@ -33,7 +39,7 @@ npm run build:web      # dist-web/      GitHub Pages, no ads
 npm run build:gd       # dist-gd/       GameDistribution
 npm run build:gamepix  # dist-gamepix/  GamePix (SDK v3, manual lifecycle)
 npm run lint && npm run typecheck && npm test
-npm run validate:jobs  # job validator -> docs/jobs-report.md
+npm run validate:jobs  # job validator (incl. Relaxed suspects top 3 + hint-only solves) -> docs/jobs-report.md
 npm run check:i18n     # every language has every key
 npm run build:web && npm run build:gamepix && npm run test:e2e
 npm run submission && npm run submission:check
@@ -42,12 +48,13 @@ npm run submission && npm run submission:check
 ## Layout
 
 - `src/game/`: pure rules: data (cars, tools, findings, faults, parts, upgrades, 40 jobs), symptom-clue rules, jobs,
-  payout, progress/save, validator (unit tested)
+  payout, progress/save, friendly diagnosis (clue colours, suspects ranking, guided hints), validator (unit tested)
 - `src/render/`: stage, garage + upgrade props, cars (Kenney Car Kit), engine bay, part slots, parts, particles, camera
 - `src/play/`: the game flow (menu, jobs, tools, test drive, payment, pause, ads, tutorial) and the repair mini-actions
 - `src/ui/`: DOM overlay (HUD, ticket, toolbar, parts, payment) and screens (menu, settings, garage, book, daily, achievements)
 - `src/i18n/`: translations; `src/app/`: clock, audio (synthesised sounds + music), input, platform SDK wrappers
 - `scripts/`: asset pipeline, job validator, i18n check, capture driver, store art, trailers, submission zips
-- `submission/`, `submission-gd/`, `submission-gamepix/`: portal packages; `docs/`: previews and the jobs report
+- `submission/`, `submission-gd/`, `submission-gamepix/`, `submission-web/`: packages (older versions kept);
+  `docs/`: previews and the jobs report
 
 Credits: [CREDITS.md](CREDITS.md).

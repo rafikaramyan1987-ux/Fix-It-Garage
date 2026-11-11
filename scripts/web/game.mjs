@@ -13,14 +13,18 @@ const game = {
   /** `capture`: the game clock only moves when the checker ticks it (software WebGL is slow), like the e2e tests */
   query: '?capture',
   canvasSelector: 'canvas#game',
-  /** every rewarded-ad button of the portal builds: hint (toolbar + action), free spare part, double payment */
-  adSelector: '.btn.ad, .act.hint, [data-tool=hint], [data-action=free-part], [data-action=double]',
+  /** every rewarded-ad button of the portal builds: extra hint (in the hint offer), free spare part, double payment.
+   *  The Hint button itself is not an ad: its first use per job is free, the next ones cost coins. */
+  adSelector: '.btn.ad, [data-action=hint-ad], [data-action=free-part], [data-action=double]',
   async ready(frame) {
     await frame.waitForFunction(() => window.__ready === true && window.__game, null, { timeout: 120_000 });
   },
   /** job 1 for a new player, with the tutorial: battery tester, order the battery, swap it, test drive, payment */
   async play(frame, page) {
     const d = new FrameDriver(frame, page);
+    // first start: the difficulty choice (Relaxed, recommended)
+    await d.until(() => !!document.querySelector('.diffpick, .toolbar'), 15);
+    if (await d.has('[data-difficulty=relaxed]')) await d.click('[data-difficulty=relaxed]');
     await d.until(() => !!document.querySelector('.toolbar'), 15);
     await d.useTool('tester', 0.2);
     await d.order('battery');
@@ -102,7 +106,7 @@ export default game;
 
 /** a returning player at career job `career`: tutorial done, some money, settings default (so the main menu shows) */
 function returning(career) {
-  const save = { money: 900, career, stars: { 1: 3, 2: 3, 3: 2 }, upgrades: [], book: ['dead-battery', 'flat-tyre'], ach: ['first_fix'], stats: { jobs: career - 1, perfect: 2, streak: 2, noWaste: 2, tricky: 0, cars: [], earned: 400, daily: 0 }, daily: { day: '', done: false }, settings: { music: true, sfx: true, lang: null }, tutorialDone: true };
+  const save = { money: 900, career, stars: { 1: 3, 2: 3, 3: 2 }, upgrades: [], book: ['dead-battery', 'flat-tyre'], ach: ['first_fix'], stats: { jobs: career - 1, perfect: 2, streak: 2, noWaste: 2, tricky: 0, cars: [], earned: 400, daily: 0 }, daily: { day: '', done: false }, settings: { music: true, sfx: true, lang: null, difficulty: 'relaxed' }, tutorialDone: true };
   return new Function(`localStorage.setItem(${JSON.stringify(SAVE_KEY)}, ${JSON.stringify(JSON.stringify(save))})`);
 }
 
@@ -227,6 +231,8 @@ export class FrameDriver {
     await this.click('[data-tool=repair]');
     await this.tick(0.3);
     if (await this.has(`.tab[data-cat=${cats[part]}]`)) await this.click(`.tab[data-cat=${cats[part]}]`);
+    // Relaxed mode: one list sorted by the clues (the first jobs show the top 3, the rest behind "Show all parts")
+    else if (!(await this.has(`.parts-sheet [data-part=${part}]`))) await this.click('[data-action=all-parts]');
     await this.click(`[data-part=${part}]`);
     await this.tick(0.2);
     await this.click('[data-action=order]');

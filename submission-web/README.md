@@ -30,7 +30,8 @@ analytics, no external requests (fonts and all assets are in the zip), no extern
 
 | File | What |
 |---|---|
-| `fix-it-garage-web-v1.zip` | the game: `index.html` at the zip root + `assets/`, relative paths only (upload as an HTML5 game, "played in the browser") |
+| `fix-it-garage-web-v2.zip` (v1.1.0 of the game: Relaxed / Expert diagnosis) | the game: `index.html` at the zip root + `assets/`, relative paths only (upload as an HTML5 game, "played in the browser") |
+| `fix-it-garage-web-v1.zip` | the previous version (1.0), kept for reference |
 | `cover-630x500.png` | itch.io cover, from the main cover art (`submission/covers/cover-1920x1080.png`) |
 | `icon-512x512.png` | icon, from the square cover |
 | `screenshot-1.png` … `screenshot-4.png` | 1280x720 gameplay: the main menu, a brake job's clues (mid-level), undoing a battery terminal with the ratchet, the payment screen of job 1 |
@@ -44,7 +45,7 @@ analytics, no external requests (fonts and all assets are in the zip), no extern
 
 ```sh
 npm ci
-npm run submission:web     # web build (vite --mode web) → submission-web/fix-it-garage-web-v1.zip
-npm run check:web -- submission-web/fix-it-garage-web-v1.zip --shots submission-web/checks
+npm run submission:web     # web build (vite --mode web) → submission-web/fix-it-garage-web-v2.zip
+npm run check:web -- submission-web/fix-it-garage-web-v2.zip --shots submission-web/checks
 npm run store:web          # cover, icon and the four screenshots
 ```

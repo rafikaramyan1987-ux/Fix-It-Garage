@@ -28,7 +28,7 @@ export function overflow(page: Page) {
       const txt = (e.textContent ?? '').trim().slice(0, 40);
       if (r.right > vw + 1 || r.left < -1) bad.push(`outside viewport: <${e.className}> "${txt}"`);
       if (e.matches('.fit, button, .btn, .lang, .tab, .nm, h2, .un') && e.clientWidth > 0 && e.scrollWidth > e.clientWidth + 2 && getComputedStyle(e).overflowX !== 'auto') bad.push(`text overflows: <${e.className}> "${txt}" ${e.scrollWidth}>${e.clientWidth}`);
-      if (e.matches('.hintbar .ht') && e.scrollHeight > e.clientHeight + 2) bad.push(`hint cut (more than 2 lines): "${txt}"`);
+      if (e.matches('.hintbar .ht') && e.scrollHeight > e.clientHeight + 2) bad.push(`hint cut (more lines than the banner shows): "${txt}"`);
     }
     return [...new Set(bad)];
   });
@@ -39,7 +39,7 @@ export const FAULT_PART: Record<string, string> = { 'dead-battery': 'battery', a
 export const jobFaults = (page: Page) => page.evaluate(() => (window.__game!.play as unknown as { job: { def: { faults: string[] } } }).job.def.faults);
 
 export function richSave(extra: object = {}) {
-  return { money: 5000, career: 1, stars: {}, upgrades: [], book: [], ach: [], stats: { jobs: 0, perfect: 0, streak: 0, noWaste: 0, tricky: 0, cars: [], earned: 0, daily: 0 }, daily: { day: '', done: false }, settings: { music: true, sfx: true, lang: null }, tutorialDone: true, ...extra };
+  return { money: 5000, career: 1, stars: {}, upgrades: [], book: [], ach: [], stats: { jobs: 0, perfect: 0, streak: 0, noWaste: 0, tricky: 0, cars: [], earned: 0, daily: 0 }, daily: { day: '', done: false }, settings: { music: true, sfx: true, lang: null, difficulty: 'relaxed' }, tutorialDone: true, ...extra };
 }
 
 /** hint banners or toasts that cover the object the player has to touch (target id) */

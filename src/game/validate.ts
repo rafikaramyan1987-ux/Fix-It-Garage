@@ -3,8 +3,9 @@
  * base tools within its target time, its readings identify its faults uniquely, difficulty grows, and rewards fit the
  * progression curve (upgrades become affordable as the career goes on).
  */
-import { BASE_TOOLS, CAREER, CARS, CAR_TYPES, FAULTS, PARTS, UPGRADES, type FaultId } from './data';
-import { bestDiagnosis, INFERABLE, lookalikes } from './rules';
+import { BASE_TOOLS, CAREER, CARS, CAR_TYPES, FAULTS, PARTS, UPGRADES, type CarType, type FaultId, type ToolId } from './data';
+import { bestDiagnosis, INFERABLE, lookalikes, toolFindings, toolWorks } from './rules';
+import { clearLeaders, FEW_SUSPECTS, nextHint, rankSuspects, type Clue } from './diagnosis';
 import { careerJob, dailyJob, optimalMinutes, type JobDef } from './jobs';
 
 export interface Row {
@@ -18,10 +19,71 @@ export interface Row {
 export interface Report {
   rows: Row[];
   issues: string[];
-  checked: { daily: number; endless: number };
+  checked: { daily: number; endless: number; relaxed: number };
 }
 
 const label = (j: JobDef) => `job ${j.n} (${j.car}: ${j.faults.join(' + ')})`;
+
+const clueOf = (tool: ToolId, faults: FaultId[], car: CarType): Clue => {
+  if (!toolWorks(tool, car)) return { tool, findings: [], verdict: 'na' };
+  const findings = toolFindings(tool, faults, car);
+  return { tool, findings, verdict: findings.length ? 'bad' : 'ok' };
+};
+
+/**
+ * Relaxed mode: the suspects list puts every true fault in the top 3 (after the fastest diagnosis, after using every
+ * base tool, and after one of two faults was fixed, with old or fresh clues), and following the guided hints alone
+ * solves the job (the hinted part is always right and in the top 3).
+ */
+export function checkRelaxed(j: JobDef, issues: string[]) {
+  const name = j.daily ? `daily ${j.id}` : label(j);
+  const top = (fixed: FaultId[], clues: Clue[]) => rankSuspects({ car: j.car, faults: j.faults, fixed, clues }).slice(0, FEW_SUSPECTS).map((s) => s.part);
+  const d = bestDiagnosis(j.faults, j.car);
+  const sets: [string, ToolId[]][] = [['fastest diagnosis', d?.tools ?? []], ['all base tools', BASE_TOOLS]];
+  for (const [what, tools] of sets) {
+    const t3 = top([], tools.map((t) => clueOf(t, j.faults, j.car)));
+    for (const f of j.faults) if (!t3.includes(FAULTS[f].part)) issues.push(`${name}: relaxed suspects after the ${what} miss ${FAULTS[f].part} (top 3: ${t3.join(', ')})`);
+    // once the clues identify the faults, exactly the true parts carry the "best match" badge
+    const list = rankSuspects({ car: j.car, faults: j.faults, fixed: [], clues: tools.map((t) => clueOf(t, j.faults, j.car)) });
+    const n = clearLeaders(list, j.faults.filter((f) => !FAULTS[f].declared).length);
+    const want = j.faults.map((f) => FAULTS[f].part).sort().join();
+    if (list.slice(0, n).map((s) => s.part).sort().join() !== want) issues.push(`${name}: after the ${what}, the "best match" badges (${list.slice(0, n).map((s) => s.part).join(', ') || 'none'}) are not the true parts`);
+    for (const fixed of j.faults) {
+      if (j.faults.length < 2) break;
+      const left = j.faults.filter((f) => f !== fixed);
+      for (const [when, clues] of [
+        ['old', tools.map((t) => clueOf(t, j.faults, j.car))],
+        ['fresh', tools.map((t) => clueOf(t, left, j.car))],
+      ] as [string, Clue[]][]) {
+        const t = top([fixed], clues);
+        for (const f of left) if (!t.includes(FAULTS[f].part)) issues.push(`${name}: after fixing ${fixed}, relaxed suspects (${when} clues, ${what}) miss ${FAULTS[f].part}`);
+      }
+    }
+  }
+  const used: ToolId[] = [];
+  const fixed: FaultId[] = [];
+  let untested = false;
+  for (let step = 0; ; step++) {
+    if (step > 20) {
+      issues.push(`${name}: following the hints does not finish the job`);
+      break;
+    }
+    const h = nextHint({ car: j.car, faults: j.faults, fixed, used, tools: BASE_TOOLS, untested });
+    if (h.kind === 'test') {
+      if (fixed.length === j.faults.length) break;
+      untested = false;
+    } else if (h.kind === 'tool') used.push(h.tool);
+    else {
+      if (!j.faults.includes(h.fault) || fixed.includes(h.fault)) {
+        issues.push(`${name}: the hint points to ${h.part}, which is not a fault left`);
+        break;
+      }
+      if (!top(fixed, used.map((t) => clueOf(t, j.faults.filter((f) => !fixed.includes(f)), j.car))).includes(h.part)) issues.push(`${name}: the hinted part ${h.part} is not in the top 3 suspects`);
+      fixed.push(h.fault);
+      untested = true;
+    }
+  }
+}
 
 export function checkJob(j: JobDef, issues: string[]) {
   const name = j.daily ? `daily ${j.id}` : label(j);
@@ -39,10 +101,15 @@ export function checkJob(j: JobDef, issues: string[]) {
   const opt = optimalMinutes(j.car, j.faults);
   if (opt > j.targetMinutes) issues.push(`${name}: target ${j.targetMinutes} min is below the fastest solve (${opt} min)`);
   if (j.mod === 'misleading' && !j.faults.some((f) => FAULTS[f].misleads)) issues.push(`${name}: misleading customer without a misleading line`);
+  checkRelaxed(j, issues);
+  relaxedChecked++;
   return d;
 }
 
+let relaxedChecked = 0;
+
 export function validate(): Report {
+  relaxedChecked = 0;
   const issues: string[] = [];
   const rows: Row[] = [];
   let cumulative = 0;
@@ -101,7 +168,7 @@ export function validate(): Report {
       checkJob(dailyJob(`${day.getFullYear()}-${day.getMonth() + 1}-${day.getDate()}`, p), issues);
       daily++;
     }
-  return { rows, issues, checked: { daily, endless } };
+  return { rows, issues, checked: { daily, endless, relaxed: relaxedChecked } };
 }
 
 export function reportMarkdown(r: Report) {
@@ -115,6 +182,7 @@ export function reportMarkdown(r: Report) {
   for (const i of r.issues) out.push(`- ${i}`);
   if (r.issues.length) out.push('');
   out.push(`Also checked: ${r.checked.endless} endless jobs (41-140) and ${r.checked.daily} daily jobs (120 days × 3 progress levels).`);
+  out.push(`Relaxed mode (${r.checked.relaxed} jobs): the suspects list puts every true fault in the top ${FEW_SUSPECTS} (and exactly the true parts carry the "best match" badge) after the fastest diagnosis, after all base tools, and after one of two faults is fixed (old or fresh clues); following only the guided hints solves every job.`);
   out.push('Variety: no two identical jobs in a row (career and endless), and consecutive career jobs always change the car type, and in jobs 1-10 neighbours never repeat the same repair action.', '');
   out.push('## Career (40 jobs)', '');
   out.push('| # | Car | Fault(s) | Tricky | Fastest diagnosis | Fastest solve | Target | Labour | Time bonus | Running total |');

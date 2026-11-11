@@ -8,6 +8,7 @@ import { clock, ease, lerp } from '../app/clock';
 import type { Target } from '../app/input';
 import { PARTS, type PartId } from '../game/data';
 import { BatterySwap, StarPattern, type BatteryTarget } from '../game/job';
+import { gentleJob, whyWrong } from '../game/diagnosis';
 import { t } from '../i18n';
 import { buildBattery } from '../render/engineBay';
 import { buildPart } from '../render/parts';
@@ -77,6 +78,17 @@ export class Repairs {
     if (fixed) {
       sfx.good();
       this.fx.sparkle(p.car.world(0, p.car.size.y + 0.1, 0), 14);
+    } else if (gentleJob(p.job.def.n)) {
+      // gentle mistakes in the first jobs: the wrong part is refunded, with one line on why it was not the cause
+      p.job.refund(part);
+      if (price) {
+        p.save.money = p.ui.money + price;
+        p.persist();
+        void p.ui.countMoney(p.save.money, 0.6);
+      }
+      const why = whyWrong(part, p.job.def.car, p.job.remaining, p.job.clues.values());
+      const name = t(`part.${part}`);
+      p.ui.toast(why.key === 'gentle.generic' ? t(why.key, { part: name }) : t(why.key, { part: name, clue: t(`clue.${why.clue}`) }), 'info', 3.6);
     }
     // back to the garage view while the toolbar is already up (no wait)
     void this.rig.go(p.shots().garage, 0.8);

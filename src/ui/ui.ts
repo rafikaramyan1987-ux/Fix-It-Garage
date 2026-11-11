@@ -1,6 +1,7 @@
 /** DOM overlay for a job: HUD, ticket, toolbar, readouts, parts sheet, payment, prompts, markers. All text via t(). */
 import { clock } from '../app/clock';
 import { CARS, FINDINGS, PARTS, PART_IDS, type CarType, type PartCat, type PartId, type ToolId } from '../game/data';
+import { findingTone, partFits, readingTone } from '../game/diagnosis';
 import type { Payout, Reading } from '../game/job';
 import type { JobDef } from '../game/jobs';
 import { esc, t } from '../i18n';
@@ -29,6 +30,15 @@ export function readingLines(r: Reading, car: CarType): string[] {
   return r.findings.map((f) => t(`finding.${f}`));
 }
 
+export interface SuspectsView {
+  /** every part that fits the car, best match first */
+  items: { part: PartId; reason: string | null; best: boolean }[];
+  /** show only this many (first jobs), null = all */
+  limit: number | null;
+  /** at least one clue collected */
+  clues: boolean;
+}
+
 export interface ToolButton {
   id: ToolId;
   used: boolean;
@@ -39,8 +49,8 @@ export interface ToolbarOpts {
   tools: ToolButton[];
   onTool: (t: ToolId) => void;
   onLocked: (t: ToolId) => void;
-  /** show the rewarded hint button (platform builds only) */
-  hint: boolean;
+  /** the hint button: "Free" for the free first hint, else its price (null hides it) */
+  hint: { free: boolean; price: number } | null;
   onHint: () => void;
   onRepair: () => void;
   onTest: () => void;
@@ -66,7 +76,11 @@ export class UI {
   private tagEls: HTMLElement[] = [];
   private meterEl: HTMLElement | null = null;
   money = 0;
+  /** Relaxed mode: coloured clue cards and readouts (Expert: plain) */
+  colours = true;
   onPause: () => void = () => {};
+  onBook: () => void = () => {};
+  private bookBtn: HTMLElement;
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -78,7 +92,11 @@ export class UI {
     pause.dataset.action = 'pause';
     pause.setAttribute('aria-label', 'Pause');
     pause.addEventListener('click', () => this.onPause());
-    this.hud.append(money, el('div', 'grow'), this.clockPill, pause);
+    // the repair book shortcut (during diagnosis only)
+    this.bookBtn = el('button', 'iconbtn bookbtn hidden', icons.book);
+    this.bookBtn.dataset.action = 'quick-book';
+    this.bookBtn.addEventListener('click', () => this.onBook());
+    this.hud.append(money, el('div', 'grow'), this.clockPill, this.bookBtn, pause);
     root.append(this.hud);
     this.ringEl = el('div', 'ring hidden', `<svg viewBox="0 0 84 84"><circle class="bg" cx="42" cy="42" r="34"/><circle class="fg" cx="42" cy="42" r="34" stroke-dasharray="213.6" stroke-dashoffset="213.6"/></svg>`);
     this.ringFg = this.ringEl.querySelector('.fg')!;
@@ -121,6 +139,12 @@ export class UI {
     this.hud.classList.toggle('hidden', !on);
   }
 
+  /** the repair book button in the HUD */
+  showBook(on: boolean) {
+    this.bookBtn.classList.toggle('hidden', !on);
+    this.bookBtn.setAttribute('aria-label', t('book.title'));
+  }
+
   /** the money pill alone (menus) */
   showMoney(on: boolean) {
     this.hud.classList.toggle('hidden', !on);
@@ -154,7 +178,7 @@ export class UI {
     const quote = symptoms.map((s) => `“${esc(s)}”`).join(' ');
     const tk = el(
       'div',
-      `ticket${job.mod ? ' is-tricky' : ''}${this.portrait ? ' compact' : ''}`,
+      `ticket${job.mod ? ' is-tricky' : ''}${this.portrait ? ' compact' : ''}${this.colours ? '' : ' plain'}`,
       `<button class="strip" data-action="ticket"><span class="avatar">${avatar(c.hair, c.skin, c.shirt)}</span><span class="sq">${quote}</span><span class="clue-count hidden">0</span><span class="pay-pill">$${job.labor}</span></button>
       <div class="details"><div class="head"><div class="avatar">${avatar(c.hair, c.skin, c.shirt)}</div><div class="meta"><div class="who">${esc(c.name)}</div><div class="car fit">${esc(t(`car.${job.car}`))} · ${esc(title)}</div><div class="reward fit">${esc(t('hud.reward', { pay: job.labor, bonus: job.timeBonus }))}</div></div><button class="toggle" aria-label="${esc(t('hud.hide'))}">▴</button></div>
       ${tricky}<div class="quote">${symptoms.map((s) => `“${esc(s)}”`).join('<br>')} ${two}</div><div class="clues-wrap"><h4><span>${esc(t('hud.clues'))}</span><span>${esc(t('hud.target', { time: fmtTime(job.targetMinutes) }))}</span></h4><ul class="clues"><li class="empty">${esc(t('hud.noClues'))}</li></ul></div></div>`,
@@ -187,8 +211,15 @@ export class UI {
     if (!this.cluesEl) return;
     this.cluesEl.querySelector('.empty')?.remove();
     this.cluesEl.querySelector(`[data-tool="${r.tool}"]`)?.remove();
-    const cls = r.verdict === 'bad' ? 'bad' : r.verdict === 'ok' ? 'ok' : 'na';
-    const li = el('li', cls, `<span class="dot">${r.verdict === 'bad' ? icons.cross : icons.check}</span><span class="lines">${readingLines(r, car).map(esc).join('<br>')}</span>`);
+    // a clue card: the tool, its reading in plain words, and a colour (green normal, red problem, orange suspicious)
+    const tone = readingTone(r);
+    const cls = r.verdict === 'bad' ? `bad ${tone}` : r.verdict;
+    const lines =
+      r.verdict === 'bad'
+        ? r.findings.map((f) => `<span class="cl ${this.colours ? findingTone(f) : ''}">${esc(t(`finding.${f}`))}</span>`).join('')
+        : `<span class="cl">${esc(readingLines(r, car)[0])}</span>`;
+    const chip = this.colours ? `<span class="tone">${esc(t(`clue.tone.${tone}`))}</span>` : '';
+    const li = el('li', `card ${cls}`, `<span class="dot">${icons[r.tool]}</span><span class="lines"><span class="tl"><span class="tn">${esc(t(`tool.${r.tool}`))}</span>${chip}</span>${lines}</span>`);
     li.dataset.tool = r.tool;
     this.cluesEl.append(li);
     const n = this.cluesEl.querySelectorAll('li:not(.empty)').length;
@@ -210,6 +241,7 @@ export class UI {
   private tutHtml: string | null = null;
   private tutSkip: (() => void) | null = null;
   private flashHtml: string | null = null;
+  private guideHtml: string | null = null;
   private flashUntil = 0;
   private hintEdge: 'top' | 'bottom' = 'bottom';
 
@@ -222,6 +254,12 @@ export class UI {
   tutorialHint(html: string | null, onSkip?: () => void) {
     this.tutHtml = html;
     this.tutSkip = onSkip ?? null;
+    this.renderHint();
+  }
+
+  /** the guided hint line (stays until the player acts; above the step prompt) */
+  guide(text: string | null) {
+    this.guideHtml = text ? `💡 ${esc(text)}` : null;
     this.renderHint();
   }
 
@@ -239,7 +277,7 @@ export class UI {
   }
 
   private renderHint() {
-    const html = this.flashHtml ?? this.tutHtml ?? this.promptHtml;
+    const html = this.flashHtml ?? this.tutHtml ?? this.guideHtml ?? this.promptHtml;
     if (!html) {
       this.promptEl?.remove();
       this.promptEl = null;
@@ -250,7 +288,7 @@ export class UI {
       this.root.append(this.promptEl);
     }
     const e = this.promptEl;
-    e.className = `hintbar ${this.hintEdge}${this.flashHtml ? ' flash' : this.tutHtml ? ' is-tut' : ''}`;
+    e.className = `hintbar ${this.hintEdge}${this.flashHtml ? ' flash' : this.tutHtml ? ' is-tut' : this.guideHtml ? ' is-guide' : ''}`;
     e.innerHTML = `<span class="ht">${html}</span>`;
     if (this.tutHtml && !this.flashHtml && this.tutSkip) {
       const sk = el('button', 'skip', esc(t('tut.skip')));
@@ -367,7 +405,8 @@ export class UI {
     }
     const acts = el('div', 'acts');
     if (o.hint) {
-      const h = el('button', 'act hint', `<span class="ic">${icons.tv}</span><span class="nm fit">${esc(t('ad.hint'))}</span>`);
+      const sub = o.hint.free ? t('hint.free') : `$${o.hint.price}`;
+      const h = el('button', `act hint${o.hint.free ? ' free' : ''}`, `<span class="ic">${icons.bulb}</span><span class="nm fit">${esc(t('hint.btn'))}</span><span class="cost fit">${esc(sub)}</span>`);
       h.dataset.tool = 'hint';
       h.addEventListener('click', o.onHint);
       acts.append(h);
@@ -393,11 +432,13 @@ export class UI {
     return new Promise<void>((res) => {
       const shade = el('div', 'shade');
       const value = r.verdict === 'bad' ? r.findings.map((f) => findingValue(f)).join(' · ') : r.verdict === 'ok' ? t('v.ok') : t('v.na');
-      const tag = r.verdict === 'bad' ? t('readout.problem') : r.verdict === 'ok' ? t('readout.fine') : t('readout.na');
+      const tone = readingTone(r);
+      const tag = r.verdict === 'bad' ? t(tone === 'warn' ? 'clue.tone.warn' : 'readout.problem') : r.verdict === 'ok' ? t('readout.fine') : t('readout.na');
+      // Expert mode: the raw reading and its words only (no colour, no verdict)
       const card = el(
         'div',
-        `readout ${r.verdict}`,
-        `<div class="tname">${icons[tool]}<span class="fit">${esc(t(`tool.${tool}`))}</span></div><div class="lcd">${esc(value)}</div><div class="tag">${esc(tag)}</div><div class="txt">${readingLines(r, car).map(esc).join('<br>')}</div><button class="btn teal">${esc(t('readout.ok'))}</button>`,
+        `readout ${r.verdict}${r.verdict === 'bad' ? ` ${tone}` : ''}${this.colours ? '' : ' plain'}`,
+        `<div class="tname">${icons[tool]}<span class="fit">${esc(t(`tool.${tool}`))}</span></div><div class="lcd">${esc(value)}</div>${this.colours ? `<div class="tag">${esc(tag)}</div>` : ''}<div class="txt">${readingLines(r, car).map(esc).join('<br>')}</div><button class="btn teal">${esc(t('readout.ok'))}</button>`,
       );
       const close = () => {
         shade.remove();
@@ -410,8 +451,12 @@ export class UI {
     });
   }
 
-  /** pick a part, then order it (or get it free with a rewarded ad); null = cancelled */
-  partsSheet(money: number, car: CarType, freeAd: boolean, open: PartCat = 'bay') {
+  /**
+   * pick a part, then order it (or get it free with a rewarded ad); null = cancelled.
+   * With `suspects` (Relaxed mode) the parts come as one list sorted by how well they match the clues, the top ones
+   * with their reason; `limit` shows only the first few, with a button for the rest.
+   */
+  partsSheet(money: number, car: CarType, freeAd: boolean, open: PartCat = 'bay', suspects?: SuspectsView) {
     return new Promise<{ part: PartId; free: boolean } | null>((res) => {
       const shade = el('div', 'shade');
       const sheet = el('div', 'sheet parts-sheet', `<h3>${esc(t('parts.title'))}</h3><p>${esc(t('parts.desc'))}</p>`);
@@ -420,11 +465,7 @@ export class UI {
       const row = el('div', 'row');
       let sel: PartId | null = null;
       const cats: PartCat[] = ['bay', 'wheels', 'under', 'fluids'];
-      const fits = (p: PartId) => {
-        if (p === 'chargeport') return !!CARS[car].ev;
-        if (['alternator', 'starter', 'plugs', 'airfilter', 'thermostat', 'fuelpump', 'muffler', 'catalyst', 'gasket', 'oil'].includes(p)) return !CARS[car].ev;
-        return true;
-      };
+      const fits = (p: PartId) => partFits(p, car);
       const renderRow = () => {
         row.innerHTML = '';
         const cancel = el('button', 'btn ghost', esc(t('parts.keep')));
@@ -468,8 +509,41 @@ export class UI {
         b.addEventListener('click', () => renderCat(c));
         tabs.append(b);
       }
-      sheet.append(tabs, grid, row);
-      renderCat(open);
+      const pick = (id: PartId) => {
+        sel = id;
+        grid.querySelectorAll('.part').forEach((x) => x.classList.toggle('sel', (x as HTMLElement).dataset.part === id));
+        renderRow();
+      };
+      const renderList = (all: boolean) => {
+        const v = suspects!;
+        grid.innerHTML = '';
+        grid.classList.add('list');
+        const items = all || v.limit === null ? v.items : v.items.slice(0, v.limit);
+        if (!v.clues && !all) grid.append(el('div', 'noclues', esc(t('parts.noClues'))));
+        else
+          items.forEach((it) => {
+            const why = it.reason ? `<span class="why fit">${esc(it.reason)}</span>` : '';
+            const badge = it.best ? `<span class="best">${esc(t('suspect.best'))}</span>` : '';
+            const b = el('button', `part${sel === it.part ? ' sel' : ''}${it.best ? ' top' : ''}`, `<span class="ic">${icons[it.part]}</span><span class="pt"><span class="nm fit">${esc(t(`part.${it.part}`))}</span>${why}</span><span class="side"><span class="pr">$${PARTS[it.part].price}</span>${badge}</span>`);
+            b.dataset.part = it.part;
+            b.addEventListener('click', () => pick(it.part));
+            grid.append(b);
+          });
+        if (!all && (!v.clues || items.length < v.items.length)) {
+          const more = el('button', 'more fit', esc(t('parts.all')));
+          more.dataset.action = 'all-parts';
+          more.addEventListener('click', () => renderList(true));
+          grid.append(more);
+        }
+      };
+      if (suspects) {
+        sheet.querySelector('p')!.textContent = t('parts.descRelaxed');
+        sheet.append(grid, row);
+        renderList(false);
+      } else {
+        sheet.append(tabs, grid, row);
+        renderCat(open);
+      }
       renderRow();
       const done = (v: { part: PartId; free: boolean } | null) => {
         shade.remove();
@@ -647,7 +721,9 @@ export class UI {
     this.hideTicket();
     this.tutHtml = null;
     this.flashHtml = null;
+    this.guideHtml = null;
     this.prompt(null);
+    this.showBook(false);
     this.steps(null);
     this.gesture(null, 'tap');
     this.toolbar(null);

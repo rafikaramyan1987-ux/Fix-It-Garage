@@ -7,18 +7,19 @@ import { sfx, setMusic, setMuted, setSfx, unlockAudio } from '../app/audio';
 import { clock, ease, lerp } from '../app/clock';
 import { Input } from '../app/input';
 import { sdk } from '../app/sdk';
-import { BASE_TOOLS, CARS, CAR_TYPES, FAULTS, PARTS, TOOLS, TOOL_IDS, UPGRADES, type CarType, type FaultId, type PartCat, type ToolId, type UpgradeId } from '../game/data';
+import { CARS, CAR_TYPES, FAULTS, PARTS, TOOLS, TOOL_IDS, UPGRADES, type CarType, type FaultId, type PartCat, type ToolId, type UpgradeId } from '../game/data';
 import { Job } from '../game/job';
-import { CAREER_LENGTH, careerJob, dailyJob, todayKey, type JobDef } from '../game/jobs';
-import { buyUpgrade, dailyDone, finishJob, garageCtx, loadSave, newSave, owns, writeSave, type SaveData } from '../game/progress';
+import { CAREER_LENGTH, careerJob, dailyJob, todayKey, withDifficulty, type JobDef } from '../game/jobs';
+import { buyUpgrade, dailyDone, difficultyOf, finishJob, garageCtx, loadSave, newSave, owns, writeSave, type SaveData } from '../game/progress';
+import { clearLeaders, faultsLeft, FEW_SUSPECTS, gentleJob, hasClues, HINT_PRICE, nextHint, rankSuspects, type Hint, type Suspect } from '../game/diagnosis';
 import { getLang, pickLang, setLang, t, type Lang } from '../i18n';
 import { Car } from '../render/cars';
 import { fadePosts } from '../render/garage';
 import type { Shot } from '../render/camera';
 import { EngineBay, Ratchet, Tester } from '../render/engineBay';
 import type { Stage } from '../render/stage';
-import { achievementsScreen, adNotice, bookScreen, confirm, dailyScreen, garageScreen, mainMenu, pauseScreen, settingsScreen } from '../ui/screens';
-import type { UI } from '../ui/ui';
+import { achievementsScreen, adNotice, bookScreen, confirm, dailyScreen, difficultyPicker, garageScreen, hintOffer, mainMenu, pauseScreen, quickBook, settingsScreen } from '../ui/screens';
+import type { SuspectsView, UI } from '../ui/ui';
 import { Repairs } from './repairs';
 
 export const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
@@ -66,6 +67,7 @@ export class Play {
     setMuted(sdk.muted);
     sdk.onMute = (m) => setMuted(m);
     ui.onPause = () => void this.pause();
+    ui.onBook = () => void this.openBook();
     ui.setMoney(this.save.money);
     window.addEventListener('pointerdown', () => unlockAudio(), { capture: true });
     // a tap during a wait (car arriving, a tool at work, the test drive) fast-forwards it
@@ -104,6 +106,27 @@ export class Play {
 
   get ctx() {
     return garageCtx(this.save);
+  }
+
+  /** Relaxed (default) or Expert */
+  get difficulty() {
+    return difficultyOf(this.save);
+  }
+
+  /** the repair book as a quick cheat sheet during diagnosis */
+  private bookOpen = false;
+  private async openBook() {
+    if (this.bookOpen || this.phase !== 'diagnose' || this.paused) return;
+    this.bookOpen = true;
+    await quickBook(this.ui.root, this.save);
+    this.bookOpen = false;
+  }
+
+  /** the difficulty choice, once (first start) */
+  private async askDifficulty() {
+    if (this.save.settings.difficulty) return;
+    this.save.settings.difficulty = await difficultyPicker(this.ui.root);
+    this.persist();
   }
 
   // ---------- keyboard (optional): KeyboardEvent.code, so QWERTY / AZERTY alike; P pauses, Escape is never used ----------
@@ -349,9 +372,10 @@ export class Play {
     this.stage.rig.snap(this.shots().title);
     sdk.loadingStop();
     await sdk.ready?.();
-    this.ui.keysHelp(ads());
+    this.ui.keysHelp(true);
     // a brand-new player lands straight in the first job: the tutorial happens inside gameplay
     const cover = this.ui.root.classList.contains('cover-mode');
+    if (!cover) await this.askDifficulty();
     if (!cover && this.save.stats.jobs === 0 && this.save.career === 1 && !this.save.tutorialDone && !this.firstRunDone) {
       this.firstRunDone = true;
       await this.career();
@@ -423,6 +447,10 @@ export class Play {
       onLang: (l) => {
         this.save.settings.lang = l;
         setLang(Play.chooseLang(this.save));
+        this.persist();
+      },
+      onDifficulty: (d) => {
+        this.save.settings.difficulty = d;
         this.persist();
       },
       onReset: () => {
@@ -540,12 +568,15 @@ export class Play {
     const [a, b] = this.sceneryCars(def.n || this.save.career);
     this.placeCars(def.car, a, b);
     if (def.faults.includes('scratch')) this.car.addScratch();
-    this.job = new Job(def, this.ctx);
+    this.job = new Job(withDifficulty(def, this.difficulty), this.ctx);
+    def = this.job.def;
+    this.guided = null;
+    this.ui.colours = this.difficulty === 'relaxed';
     this.testedFits = -1;
     sdk.gameplayStart();
     this.ui.showMoney(false);
     this.ui.showHud(true);
-    this.ui.keysHelp(ads() && !this.job.hintUsed);
+    this.ui.keysHelp(true);
     this.setClock();
     this.stage.rig.snap(this.shots().garage);
     await this.skippable(this.driveIn());
@@ -575,6 +606,55 @@ export class Play {
     return TOOL_IDS;
   }
 
+  /** the tools the garage owns */
+  private ownedTools() {
+    return TOOL_IDS.filter((id) => !TOOLS[id].upgrade || owns(this.save, TOOLS[id].upgrade!));
+  }
+
+  /** the guided hint the player asked for (shown until they follow it) */
+  private guided: Hint | null = null;
+  private guidedTests = 0;
+
+  /** the hint in one short sentence: which tool next and why, or which part to order, or test */
+  hintText(h: Hint) {
+    const def = this.job.def;
+    if (h.kind === 'test') return t('hint.test', { test: t('action.test') });
+    if (h.kind === 'repair') return t('hint.repair', { part: t(`part.${h.part}`), repair: t('action.repair') });
+    const why = def.mod === 'misleading' && FAULTS[h.fault].misleads ? 'hint.why.mislead' : `hint.why.${h.fault}`;
+    return t('hint.line', { why: t(why), go: t(`hint.go.${h.tool}`) });
+  }
+
+  /** the hint is done once the player did what it said */
+  private guidedDone() {
+    const h = this.guided;
+    const j = this.job;
+    if (!h) return true;
+    if (h.kind === 'tool') return j.clues.has(h.tool);
+    if (h.kind === 'repair') return j.bought.includes(h.part);
+    return j.tests > this.guidedTests;
+  }
+
+  /** the selector of the button the hint points at */
+  private guidedTarget() {
+    const h = this.guided;
+    if (!h) return null;
+    return h.kind === 'tool' ? `.toolbar [data-tool=${h.tool}]` : h.kind === 'repair' ? '.toolbar [data-tool=repair]' : '.toolbar [data-tool=test]';
+  }
+
+  /** Relaxed mode: the parts sorted by how well they match the clues, with the reason under the top ones */
+  private suspects(): SuspectsView | undefined {
+    if (this.difficulty !== 'relaxed') return undefined;
+    const j = this.job;
+    const list = rankSuspects({ car: j.def.car, faults: j.faults, fixed: [...j.fixed], clues: j.clues.values() });
+    const lead = clearLeaders(list, faultsLeft(j.faults, [...j.fixed]));
+    const reason = (s: Suspect) => (s.declared ? t('suspect.scratch') : s.matched.length ? t('suspect.matches', { clues: s.matched.slice(0, 3).map((f) => t(`clue.${f}`)).join(' + ') }) : null);
+    return {
+      items: list.map((s, i) => ({ part: s.part, best: i < lead, reason: i < FEW_SUSPECTS ? reason(s) : null })),
+      limit: gentleJob(j.def.n) ? FEW_SUSPECTS : null,
+      clues: hasClues(j.clues.values()) || !!list[0]?.declared,
+    };
+  }
+
   /** the diagnose phase. Resolves true once the test drive passed. */
   private async diagnoseLoop(): Promise<boolean> {
     this.phase = 'diagnose';
@@ -591,6 +671,10 @@ export class Play {
     const hintKey = newFit ? 'prompt.fixedMore' : failed ? null : j.clues.size ? 'prompt.diagnoseMore' : 'prompt.diagnose';
     if (failed) this.ui.prompt(t('prompt.oneMore'));
     else this.hint(hintKey);
+    if (this.guidedDone()) this.guided = null;
+    this.ui.guide(this.guided ? this.hintText(this.guided) : null);
+    const relaxed = this.difficulty === 'relaxed';
+    const freeHint = relaxed && j.hints === 0;
     const choice = await new Promise<{ k: 'tool'; t: ToolId } | { k: 'hint' } | { k: 'repair' } | { k: 'test' }>((res) => {
       this.ui.toolbar({
         tools: this.toolsFor().map((id) => ({ id, used: j.clues.has(id), locked: !!TOOLS[id].upgrade && !owns(this.save, TOOLS[id].upgrade!), minutes: j.toolMinutes(id) })),
@@ -599,7 +683,7 @@ export class Play {
           sfx.bad();
           this.ui.toast(t('tool.lockedToast', { tool: t(`tool.${tt}`) }), 'info');
         },
-        hint: ads() && !j.hintUsed,
+        hint: this.tutOn ? null : { free: freeHint, price: HINT_PRICE },
         onHint: () => res({ k: 'hint' }),
         onRepair: () => res({ k: 'repair' }),
         onTest: () => res({ k: 'test' }),
@@ -607,6 +691,12 @@ export class Play {
         testReady: installed,
         testPulse: newFit,
       });
+      this.ui.showBook(true);
+      const gt = this.guidedTarget();
+      if (gt) {
+        this.ui.root.querySelector(gt)?.classList.add('tut-glow');
+        this.tutTarget = gt;
+      }
       if (this.tutOn) {
         if (!j.clues.size) this.tutorial('tool', '[data-tool=tester]');
         else if (!anyFixed) this.tutorial('repair', '[data-tool=repair]');
@@ -614,6 +704,8 @@ export class Play {
       }
     });
     this.ui.toolbar(null);
+    this.ui.showBook(false);
+    this.ui.guide(null);
     // the tutorial line of this step is done once the player pressed a button
     if (this.tut) this.tut.close();
     this.tutTarget = null;
@@ -625,21 +717,38 @@ export class Play {
       return false;
     }
     if (choice.k === 'hint') {
-      const ok = await this.rewarded(t('ad.hint'));
-      if (!ok) return false;
-      const tool = j.hintTool(BASE_TOOLS);
-      j.hintUsed = true;
-      if (tool) {
-        this.ui.toast(t('toast.hint', { tool: t(`tool.${tool}`) }), 'info');
-        await clock.wait(0.6);
-        await this.useTool(tool, true);
+      // the first hint of a job is free (Relaxed); more cost coins or, in the portal builds, a rewarded ad
+      if (!freeHint) {
+        const pay = await hintOffer(this.ui.root, HINT_PRICE, this.save.money >= HINT_PRICE, ads());
+        if (!pay) return false;
+        if (pay === 'ad') {
+          // the offer already says it is an ad: no second notice
+          this.adNoticeShown = true;
+          if (!(await this.rewarded(t('ad.hint')))) return false;
+        } else {
+          this.save.money = this.ui.money - HINT_PRICE;
+          this.persist();
+          sfx.cash();
+          void this.ui.countMoney(this.save.money, 0.4);
+        }
       }
+      j.hints++;
+      j.hintUsed = true;
+      this.guided = nextHint({ car: j.def.car, faults: j.faults, fixed: [...j.fixed], used: [...j.clues.keys()], tools: this.ownedTools(), untested: newFit });
+      this.guidedTests = j.tests;
+      sfx.pop();
       return false;
     }
     if (choice.k === 'test') return this.testDrive();
-    const sheet = this.ui.partsSheet(this.save.money, j.def.car, ads(), this.partsTab());
+    const sheet = this.ui.partsSheet(this.save.money, j.def.car, ads(), this.partsTab(), this.suspects());
     if (this.tutOn) this.tutorial('part', '[data-part=battery]');
+    else if (this.guided?.kind === 'repair') {
+      const sel = `.parts-sheet [data-part=${this.guided.part}]`;
+      this.ui.root.querySelector(sel)?.classList.add('tut-glow');
+      this.ui.guide(this.hintText(this.guided));
+    }
     const pick = await sheet;
+    this.ui.guide(null);
     if (this.tut) this.tut.close();
     this.tutTarget = null;
     if (!pick) return false;

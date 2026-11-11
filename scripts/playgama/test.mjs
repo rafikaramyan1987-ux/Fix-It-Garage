@@ -204,7 +204,9 @@ if (only !== 'mock') {
     // watched to the end: the part for free
     await d.click('[data-tool=repair]');
     await d.tick(0.3);
-    await d.click('.tab[data-cat=bay]');
+    // Relaxed mode, no clue yet: every part is one tap away behind "Show all parts"
+    if (await d.has('.tab[data-cat=bay]')) await d.click('.tab[data-cat=bay]');
+    else await d.click('[data-action=all-parts]');
     await d.click('[data-part=battery]');
     await d.tick(0.2);
     const free = frame.locator('[data-action=free-part]');

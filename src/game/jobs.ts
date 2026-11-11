@@ -5,6 +5,7 @@
 import { ACTION_MINUTES, CAREER, CARS, CAR_TYPES, CUSTOMERS, DELIVERY_MINUTES, FAULTS, PARTS, TEST_MINUTES, type CarType, type Customer, type FaultId, type JobSpec, type Modifier } from './data';
 import { bestDiagnosis, faultFits, INFERABLE, lookalikes } from './rules';
 import { BASE_TOOLS } from './data';
+import { EXPERT_BONUS, type Difficulty } from './diagnosis';
 
 export interface JobDef {
   id: string;
@@ -138,4 +139,10 @@ export function dailyJob(day: string, progress: number): JobDef {
   job.labor *= 2;
   job.n = 0;
   return job;
+}
+
+/** Expert mode pays bigger rewards (labour and time bonus) */
+export function withDifficulty(job: JobDef, d: Difficulty): JobDef {
+  if (d !== 'expert') return job;
+  return { ...job, labor: round5(job.labor * EXPERT_BONUS), timeBonus: round5(job.timeBonus * EXPERT_BONUS) };
 }

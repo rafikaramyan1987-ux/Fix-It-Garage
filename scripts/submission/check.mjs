@@ -8,8 +8,13 @@ let bad = 0;
 const fail = (m) => (bad++, console.log('FAIL', m));
 if (DESCRIPTION.length > 500 || DESCRIPTION.length < 100) fail(`description is ${DESCRIPTION.length} chars (100-500)`);
 if (HOW_TO_PLAY.length > 500) fail(`how-to-play is ${HOW_TO_PLAY.length} chars (max 500)`);
-for (const dir of ['submission', 'submission-gd', 'submission-gamepix']) {
-  const z = readdirSync(dir).find((f) => f.endsWith('.zip'));
+// the newest zip of each folder (older versions are kept next to it)
+const version = JSON.parse(readFileSync('package.json', 'utf8')).version;
+const newest = (dir) => readdirSync(dir).filter((f) => f.endsWith('.zip')).sort((a, b) => a.localeCompare(b, 'en', { numeric: true })).pop();
+const dirs = ['submission', 'submission-gd', 'submission-gamepix'];
+for (const dir of dirs) {
+  const z = newest(dir);
+  if (z && !z.endsWith(`-v${version}.zip`)) fail(`${dir}: the newest zip ${z} is not version ${version} (run npm run submission)`);
   if (!z) {
     fail(`${dir}: no zip`);
     continue;
@@ -25,7 +30,7 @@ for (const dir of ['submission', 'submission-gd', 'submission-gamepix']) {
 // the GameDistribution zip must carry Fix It Garage's real game ID (never the placeholder)
 export const GD_GAME_ID = 'ca104008d4054b3b9652dd239bc9893f';
 {
-  const z = readdirSync('submission-gd').find((f) => f.endsWith('.zip'));
+  const z = newest('submission-gd');
   const js = z ? execFileSync('unzip', ['-Z1', `submission-gd/${z}`], { encoding: 'utf8' }).split('\n').filter((f) => f.endsWith('.js')) : [];
   const code = js.map((f) => execFileSync('unzip', ['-p', `submission-gd/${z}`, f], { encoding: 'utf8' })).join('\n');
   if (!code.includes(GD_GAME_ID)) fail(`the GD zip does not contain the game ID ${GD_GAME_ID}`);

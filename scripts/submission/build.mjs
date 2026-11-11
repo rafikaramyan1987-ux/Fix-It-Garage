@@ -1,10 +1,13 @@
-// Portal submission folders. Run after the builds (npm run build && npm run build:gd && npm run build:gamepix):
+// Portal submission folders. Run after the builds (npm run build && npm run build:web && npm run build:gd && npm run build:gamepix):
 //   node scripts/submission/build.mjs
+// Each run writes the zips of the version in package.json; zips of older versions stay next to them.
 // - submission/          CrazyGames: zip of dist/ (index.html at the root), covers + trailers (scripts/submission/covers.ts, trailer.ts)
 // - submission-gd/       GameDistribution: zip of dist-gd/, JPG thumbnails, description (max 500 chars)
 // - submission-gamepix/  GamePix: zip of dist-gamepix/, icon + cover, description (100-500) and how-to-play (max 500)
+// The web zip (submission-web/) and the Playgama zip (submission-playgama/) have their own tools: scripts/web/zip.mjs
+// and scripts/playgama/zip.mjs.
 import { execFileSync } from 'node:child_process';
-import { existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { DESCRIPTION, HOW_TO_PLAY, NAME, SHORT, TAGS } from './texts.mjs';
 
 const version = JSON.parse((await import('node:fs')).readFileSync('package.json', 'utf8')).version;
@@ -18,6 +21,7 @@ for (const d of ['submission', 'submission-gd', 'submission-gamepix']) mkdirSync
 zip('dist', `submission/fix-it-garage-crazygames-v${version}.zip`);
 zip('dist-gd', `submission-gd/fix-it-garage-gd-v${version}.zip`);
 zip('dist-gamepix', `submission-gamepix/fix-it-garage-gamepix-v${version}.zip`);
+const older = (dir) => readdirSync(dir).filter((f) => f.endsWith('.zip') && !f.includes(`-v${version}.zip`)).sort();
 
 writeFileSync('submission/README.md', `# ${NAME} — CrazyGames submission
 
@@ -39,6 +43,7 @@ ${TAGS.join(', ')}
   (at most one per 2 minutes, never during a repair), rewarded ads only from buttons the player taps (hint, free spare
   part, double payment), granted only when the ad completed; 8 s timeout, then "No ad available right now, try later"
   for 2.5 s. Language from the SDK locale (10 languages), saves in the SDK data module.
+- Older versions (kept for reference): ${older('submission').map((z) => `\`${z}\``).join(', ') || 'none'}.
 - \`covers/cover-1920x1080.png\`, \`covers/cover-800x1200.png\`, \`covers/cover-800x800.png\` — rendered from the real 3D title scene.
 - \`videos/trailer-1920x1080.mp4\`, \`videos/trailer-1080x1920.mp4\` — 18 s, no sound, recorded from real play.
 
@@ -52,6 +57,7 @@ writeFileSync('submission-gd/README.md', `# ${NAME} — GameDistribution submiss
 - **Build:** \`fix-it-garage-gd-v${version}.zip\` (\`npm run build:gd\`): \`index.html\` at the root of the zip, assets in \`assets/\`,
   relative paths only. Loads the GameDistribution HTML5 SDK at runtime (interstitials only between jobs, at most one per
   2 minutes; rewarded ads only after SDK_REWARDED_WATCH_COMPLETE). Language from the browser.
+- **Older versions** (kept): ${older('submission-gd').map((z) => `\`${z}\``).join(', ') || 'none'}.
 - **Game ID:** \`ca104008d4054b3b9652dd239bc9893f\` (\`GD_GAME_ID\` in \`src/app/platform/gd.ts\`; CI checks the zip carries it).
 - **Thumbnails:** \`thumbnails/thumb-512x384.jpg\`, \`thumb-512x512.jpg\`, \`thumb-200x120.jpg\`, \`thumb-1280x720.jpg\`, \`thumb-1280x550.jpg\`.
 - **Orientation:** landscape and portrait, desktop and mobile.
@@ -77,6 +83,7 @@ writeFileSync('submission-gamepix/README.md', `# ${NAME} — GamePix submission
   \`pause\`/\`resume\` events pause the game and its audio, \`soundOff\`/\`soundOn\` silence it. Interstitials only between
   jobs (at most one per 2 minutes), rewarded ads only from player taps, reward only on \`success: true\`.
   Language from \`GamePix.lang()\`.
+- **Older versions** (kept): ${older('submission-gamepix').map((z) => `\`${z}\``).join(', ') || 'none'}.
 - **Icon / cover:** \`icon-256x256.jpg\`, \`cover-1360x850.jpg\` (rendered from the real 3D title scene).
 
 ## Name

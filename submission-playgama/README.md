@@ -19,7 +19,8 @@ simulation, car, mechanic, repair, garage, puzzle, casual, 3d, family, mobile
 
 | File | What |
 |---|---|
-| `fix-it-garage-playgama-v1.zip` | the Playgama build: `index.html` at the zip root, `playgama-bridge.js` (Bridge 2.4.1) + `playgama-bridge-config.json` beside it, `assets/`; relative paths only |
+| `fix-it-garage-playgama-v2.zip` (v1.1.0 of the game: Relaxed / Expert diagnosis) | the Playgama build: `index.html` at the zip root, `playgama-bridge.js` (Bridge 2.4.1) + `playgama-bridge-config.json` beside it, `assets/`; relative paths only |
+| `fix-it-garage-playgama-v1.zip` | the previous version (1.0), kept for reference |
 | `cover-800x800.png`, `cover-1080x1920.png`, `cover-1920x1080.png` | the three covers Playgama's form takes (square, portrait, landscape), made with Playgama's own covers script from 1920x1080 / 1080x1920 screenshots of real play and the game's title font (Fredoka) |
 | `icon-512x512.png` | icon (same as submission-web/) |
 
@@ -40,7 +41,7 @@ simulation, car, mechanic, repair, garage, puzzle, casual, 3d, family, mobile
 
 ```sh
 npm ci
-npm run submission:playgama   # vite --mode playgama → submission-playgama/fix-it-garage-playgama-v1.zip
+npm run submission:playgama   # vite --mode playgama → submission-playgama/fix-it-garage-playgama-v2.zip
 npm run check:playgama        # zip checks + Playgama's precheck
 npm run test:playgama         # Bridge mock + stubbed Playgama SDK test (Playwright)
 node scripts/playgama/shots.mjs /tmp/pg-shots   # gameplay shots for the covers (then Playgama's covers.mjs)

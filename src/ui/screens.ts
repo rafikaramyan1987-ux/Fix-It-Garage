@@ -2,6 +2,7 @@
 import { ACHIEVEMENTS, CARS, CAR_TYPES, FAULTS, UPGRADES, UPGRADE_IDS, type AchievementId, type UpgradeId } from '../game/data';
 import { INFERABLE as INFERABLE_IDS } from '../game/rules';
 import { achProgress, owns, type SaveData } from '../game/progress';
+import type { Difficulty } from '../game/diagnosis';
 import { esc, LANGS, LANG_NAMES, t, type Lang } from '../i18n';
 import { icons } from './icons';
 import { el } from './ui';
@@ -76,6 +77,7 @@ export interface SettingsHooks {
   onMusic: (on: boolean) => void;
   onSfx: (on: boolean) => void;
   onLang: (l: Lang | null) => void;
+  onDifficulty: (d: Difficulty) => void;
   onReset: () => void;
 }
 
@@ -99,6 +101,19 @@ export function settingsScreen(root: HTMLElement, h: SettingsHooks) {
       };
       toggle(t('settings.music'), h.settings.music, 'music', (v) => h.onMusic(v));
       toggle(t('settings.sfx'), h.settings.sfx, 'sfx', (v) => h.onSfx(v));
+      body.append(el('h4', 'fit', esc(t('settings.difficulty'))));
+      const diff = el('div', 'langs diffs');
+      for (const d of ['relaxed', 'expert'] as Difficulty[]) {
+        const on = (h.settings.difficulty ?? 'relaxed') === d;
+        const b = el('button', `lang${on ? ' on' : ''}`, `<span class="fit">${esc(t(`diff.${d}`))}</span><small class="fit">${esc(t(`diff.${d}Short`))}</small>`);
+        b.dataset.difficulty = d;
+        b.addEventListener('click', () => {
+          h.onDifficulty(d);
+          render();
+        });
+        diff.append(b);
+      }
+      body.append(diff);
       body.append(el('h4', 'fit', esc(t('settings.language'))));
       const langs = el('div', 'langs');
       const auto = el('button', `lang${h.settings.lang === null ? ' on' : ''}`, esc(t('settings.auto')));
@@ -312,4 +327,87 @@ export function tutorialBubble(root: HTMLElement, html: string, onSkip: () => vo
     b.remove();
     root.classList.remove('tut-on');
   };
+}
+
+/** the difficulty choice, shown once at the first start: Relaxed (recommended) or Expert */
+export function difficultyPicker(root: HTMLElement) {
+  return new Promise<Difficulty>((res) => {
+    const wrap = el('div', 'screen diffpick');
+    const card = el('div', 'panel', `<div class="phead"><h2 class="fit">${esc(t('diff.title'))}</h2></div>`);
+    const body = el('div', 'pbody');
+    for (const d of ['relaxed', 'expert'] as Difficulty[]) {
+      const b = el(
+        'button',
+        `dcard ${d}`,
+        `<span class="dic">${d === 'relaxed' ? icons.bulb : icons.wrench}</span><span class="dt"><span class="dn fit">${esc(t(`diff.${d}`))}${d === 'relaxed' ? ` <em>${esc(t('diff.recommended'))}</em>` : ''}</span><span class="dd">${esc(t(`diff.${d}Desc`))}</span></span>`,
+      );
+      b.dataset.difficulty = d;
+      b.addEventListener('click', () => {
+        wrap.remove();
+        res(d);
+      });
+      body.append(b);
+    }
+    body.append(el('p', 'pdesc center', esc(t('diff.later'))));
+    card.append(body);
+    wrap.append(card);
+    root.append(wrap);
+  });
+}
+
+export type HintPay = 'pay' | 'ad' | null;
+/** a hint after the free one: pay coins, or (portal builds) watch a rewarded ad */
+export function hintOffer(root: HTMLElement, price: number, canPay: boolean, ad: boolean) {
+  return new Promise<HintPay>((res) => {
+    const shade = el('div', 'shade top');
+    const card = el('div', 'dialog hint-offer', `<div class="adicon bulb">${icons.bulb}</div><p>${esc(t('hint.title'))}</p>${canPay ? '' : `<p class="poor">${esc(t('hint.poor'))}</p>`}`);
+    const row = el('div', 'row');
+    const done = (v: HintPay) => {
+      shade.remove();
+      card.remove();
+      res(v);
+    };
+    const no = el('button', 'btn ghost', esc(t('common.cancel')));
+    no.addEventListener('click', () => done(null));
+    row.append(no);
+    const pay = el('button', `btn green${canPay ? '' : ' poor'}`, `${icons.coin.replace('<svg', '<svg width="24" height="24"')}<span class="fit">${esc(t('hint.pay', { price }))}</span>`);
+    pay.dataset.action = 'hint-pay';
+    if (canPay) pay.addEventListener('click', () => done('pay'));
+    else pay.setAttribute('disabled', '');
+    row.append(pay);
+    if (ad) {
+      const a = el('button', 'btn ad', `${icons.tv.replace('<svg', '<svg width="26" height="26"')}<span class="fit">${esc(t('ad.hint'))}</span>`);
+      a.dataset.action = 'hint-ad';
+      a.addEventListener('click', () => done('ad'));
+      row.append(a);
+    }
+    card.append(row);
+    shade.addEventListener('click', () => done(null));
+    root.append(shade, card);
+  });
+}
+
+/** the repair book during a job: only the faults found so far, with their signs (a quick cheat sheet) */
+export function quickBook(root: HTMLElement, save: SaveData) {
+  return new Promise<void>((res) => {
+    const { wrap, body } = panel(root, 'book quick', t('book.title'), () => (wrap.remove(), res()));
+    const known = INFERABLE_IDS.filter((f) => save.book.includes(f));
+    body.append(el('p', 'pdesc', esc(t(known.length ? 'book.quickDesc' : 'book.quickEmpty'))));
+    const list = el('div', 'cards');
+    for (const f of known) {
+      const part = FAULTS[f].part;
+      list.append(
+        el(
+          'div',
+          'bcard',
+          `<div class="uic">${icons[part as keyof typeof icons] ?? icons.wrench}</div><div class="ut"><div class="un fit">${esc(t(`fault.${f}.name`))}</div><div class="ud">“${esc(t(`fault.${f}.symptom`))}”</div><div class="ud tip">${esc(t(`fault.${f}.book`))}</div></div>`,
+        ),
+      );
+    }
+    body.append(list);
+    const back = el('button', 'btn teal wide', esc(t('book.back')));
+    back.dataset.action = 'book-back';
+    back.addEventListener('click', () => (wrap.remove(), res()));
+    body.append(back);
+  });
 }

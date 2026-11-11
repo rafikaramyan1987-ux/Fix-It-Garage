@@ -19,8 +19,10 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm test
-      - name: Job validator (every job solvable, clues identify the faults, rewards fit the curve; writes docs/jobs-report.md)
+      - name: Job validator (every job solvable, clues identify the faults, rewards fit the curve, Relaxed suspects put the true faults in the top 3 and the hints alone solve every job; writes docs/jobs-report.md)
         run: npm run validate:jobs
+      - name: Job validator report is up to date
+        run: git diff --exit-code docs/jobs-report.md
       - name: Translations (every language file has all keys of en.json)
         run: npm run check:i18n
       - name: Builds (crazygames, web, gd, gamepix)
@@ -49,7 +51,7 @@ jobs:
           check "$zip" "$RUNNER_TEMP/gpx-zip.js"
       - name: Build size budget (< 8 MB each)
         run: for d in dist dist-web dist-gd dist-gamepix; do node scripts/check-size.mjs $d; done
-      - name: Submission zips (index.html at the root, store text limits)
+      - name: Submission zips (newest of each portal + web is this version, index.html at the root, store text limits)
         run: |
           npm run submission
           npm run submission:check
@@ -85,8 +87,8 @@ jobs:
         run: npm run build:web && node scripts/web/zip.mjs ci-web/fix-it-garage-web.zip
       - name: Web zip checks (index.html at the root, no crazygames / gamedistribution / gamepix / googlesyndication, no http(s) request at runtime, iframe 640x480 / 960x600 / 1280x720 / 390x844, first job played)
         run: node scripts/web/check.mjs ci-web/fix-it-garage-web.zip --shots ci-web/checks
-      - name: Committed zip (submission-web/fix-it-garage-web-v1.zip) passes the same file checks
-        run: node scripts/web/check.mjs submission-web/fix-it-garage-web-v1.zip --static
+      - name: Newest committed zip (submission-web/fix-it-garage-web-v*.zip) passes the same file checks
+        run: node scripts/web/check.mjs "$(ls submission-web/fix-it-garage-web-v*.zip | sort -V | tail -1)" --static
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -109,8 +111,8 @@ jobs:
         run: npm run build:playgama
       - name: Playgama zip checks (index.html at the root, Bridge script referenced first in <head>, pinned Bridge build, no crazygames / gamedistribution / gamepix, Playgama's precheck)
         run: node scripts/playgama/zip.mjs ci-playgama/fix-it-garage-playgama.zip && node scripts/playgama/check.mjs ci-playgama/fix-it-garage-playgama.zip
-      - name: Committed zip (submission-playgama/fix-it-garage-playgama-v1.zip) passes the same checks
-        run: node scripts/playgama/check.mjs submission-playgama/fix-it-garage-playgama-v1.zip
+      - name: Newest committed zip (submission-playgama/fix-it-garage-playgama-v*.zip) passes the same checks
+        run: node scripts/playgama/check.mjs "$(ls submission-playgama/fix-it-garage-playgama-v*.zip | sort -V | tail -1)"
       - name: Bridge test (mock platform + stubbed Playgama SDK; interstitial, rewarded completed / cancelled, muted during ads)
         run: node scripts/playgama/test.mjs ci-playgama/fix-it-garage-playgama.zip
       - name: Vendored Bridge = official v2.4.1 standalone playgama build (rebuilt from the tag)

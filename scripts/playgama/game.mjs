@@ -12,7 +12,7 @@ export default {
   /** job 1 (tutorial) played through real input to its payment screen */
   play: web.play,
   /** the clearly labelled rewarded buttons: "Watch an ad: double payment" (payment screen), "Watch an ad: get this part free" (parts sheet) */
-  rewardSelector: '[data-action=double], [data-action=free-part], [data-tool=hint], .act.hint',
+  rewardSelector: '[data-action=double], [data-action=free-part], [data-action=hint-ad]',
   driver: (frame, page) => new FrameDriver(frame, page),
   money: (frame) => frame.evaluate(() => window.__game.play.save.money),
   /** the payment screen's "Next customer": the between-levels interstitial slot, then the next job opens */
