@@ -24,8 +24,11 @@ import { Repairs } from './repairs';
 
 export const V = (x: number, y: number, z: number) => new THREE.Vector3(x, y, z);
 export const LIFT_UP = 1.3;
-/** rewarded ads exist only in the portal builds (never in the plain web build) */
-export const ADS = __PLATFORM__ !== 'web';
+/**
+ * rewarded ads exist only in the portal builds (never in the plain web build); in the Playgama build only where
+ * Bridge supports them (otherwise the rewarded buttons are hidden)
+ */
+export const ads = () => __PLATFORM__ !== 'web' && (__PLATFORM__ !== 'playgama' || sdk.available);
 
 export class Play {
   readonly input: Input;
@@ -86,8 +89,9 @@ export class Play {
 
   /** the language: the player's choice, else the portal's / browser's, else English */
   static chooseLang(save: SaveData): Lang {
-    const portal = __PLATFORM__ === 'gamepix' || __PLATFORM__ === 'crazygames' ? sdk.locale() : null;
-    const nav = typeof navigator !== 'undefined' ? [...(navigator.languages ?? []), navigator.language] : [];
+    const portal = __PLATFORM__ === 'gamepix' || __PLATFORM__ === 'crazygames' || __PLATFORM__ === 'playgama' ? sdk.locale() : null;
+    // Playgama: the language comes only from Bridge's platform.language (or the player's own choice), else English
+    const nav = __PLATFORM__ !== 'playgama' && typeof navigator !== 'undefined' ? [...(navigator.languages ?? []), navigator.language] : [];
     return pickLang(save.settings.lang, portal, ...nav);
   }
 
@@ -475,6 +479,8 @@ export class Play {
       if (c === 'menu' && !(await confirm(this.ui.root, t('pause.leave'), t('pause.leaveYes')))) continue;
       this.paused = false;
       if (c === 'menu') {
+        // Playgama: Bridge's level_failed (the job was left unfinished)
+        if (__PLATFORM__ === 'playgama') sdk.levelEnd?.(false);
         this.abandon();
         return;
       }
@@ -500,7 +506,7 @@ export class Play {
   // ---------- rewarded ads ----------
   /** a rewarded ad the player asked for; true only when it really completed */
   async rewarded(label: string) {
-    if (!ADS) return false;
+    if (!ads()) return false;
     if (!this.adNoticeShown) {
       const ok = await adNotice(this.ui.root, label);
       if (!ok) return false;
@@ -713,7 +719,7 @@ export class Play {
     if (choice.k === 'hint') {
       // the first hint of a job is free (Relaxed); more cost coins or, in the portal builds, a rewarded ad
       if (!freeHint) {
-        const pay = await hintOffer(this.ui.root, HINT_PRICE, this.save.money >= HINT_PRICE, ADS);
+        const pay = await hintOffer(this.ui.root, HINT_PRICE, this.save.money >= HINT_PRICE, ads());
         if (!pay) return false;
         if (pay === 'ad') {
           // the offer already says it is an ad: no second notice
@@ -734,7 +740,7 @@ export class Play {
       return false;
     }
     if (choice.k === 'test') return this.testDrive();
-    const sheet = this.ui.partsSheet(this.save.money, j.def.car, ADS, this.partsTab(), this.suspects());
+    const sheet = this.ui.partsSheet(this.save.money, j.def.car, ads(), this.partsTab(), this.suspects());
     if (this.tutOn) this.tutorial('part', '[data-part=battery]');
     else if (this.guided?.kind === 'repair') {
       const sel = `.parts-sheet [data-part=${this.guided.part}]`;
@@ -1060,6 +1066,8 @@ export class Play {
     sfx.engineStop();
     this.engineOn = false;
     sdk.gameplayStop();
+    // Playgama: Bridge's level_completed (the car is fixed and paid)
+    if (__PLATFORM__ === 'playgama') sdk.levelEnd?.(true);
     const j = this.job;
     const p = j.payout();
     this.phase = 'payment';
@@ -1071,7 +1079,7 @@ export class Play {
     const before = this.save.career;
     const thanks = `pay.thanks${1 + ((j.def.n + j.minutes) % 4)}`;
     const extra = before === CAREER_LENGTH && !j.def.daily ? t('pay.careerDone') : '';
-    const choice = await this.ui.payment(p, j.def.customer.name, thanks, ADS, (i) => sfx.star(i), extra);
+    const choice = await this.ui.payment(p, j.def.customer.name, thanks, ads(), (i) => sfx.star(i), extra);
     let total = p.total;
     if (choice === 'double' && (await this.rewarded(t('ad.double')))) total *= 2;
     const mid = { x: window.innerWidth / 2, y: window.innerHeight / 2 };

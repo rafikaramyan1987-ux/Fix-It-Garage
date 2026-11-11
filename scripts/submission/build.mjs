@@ -4,8 +4,8 @@
 // - submission/          CrazyGames: zip of dist/ (index.html at the root), covers + trailers (scripts/submission/covers.ts, trailer.ts)
 // - submission-gd/       GameDistribution: zip of dist-gd/, JPG thumbnails, description (max 500 chars)
 // - submission-gamepix/  GamePix: zip of dist-gamepix/, icon + cover, description (100-500) and how-to-play (max 500)
-// - submission-web/      the plain web build (no ads, no SDK): zip of dist-web/ for self-hosting
-// - submission-playgama/ Playgama, only if that folder exists (zip of dist-playgama/)
+// The web zip (submission-web/) and the Playgama zip (submission-playgama/) have their own tools: scripts/web/zip.mjs
+// and scripts/playgama/zip.mjs.
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdirSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { DESCRIPTION, HOW_TO_PLAY, NAME, SHORT, TAGS } from './texts.mjs';
@@ -17,12 +17,10 @@ function zip(dir, out) {
   execFileSync('zip', ['-r', '-9', '-X', '-q', `${process.cwd()}/${out}`, '.'], { cwd: dir });
   console.log('wrote', out);
 }
-for (const d of ['submission', 'submission-gd', 'submission-gamepix', 'submission-web']) mkdirSync(d, { recursive: true });
+for (const d of ['submission', 'submission-gd', 'submission-gamepix']) mkdirSync(d, { recursive: true });
 zip('dist', `submission/fix-it-garage-crazygames-v${version}.zip`);
 zip('dist-gd', `submission-gd/fix-it-garage-gd-v${version}.zip`);
 zip('dist-gamepix', `submission-gamepix/fix-it-garage-gamepix-v${version}.zip`);
-zip('dist-web', `submission-web/fix-it-garage-web-v${version}.zip`);
-if (existsSync('submission-playgama')) zip('dist-playgama', `submission-playgama/fix-it-garage-playgama-v${version}.zip`);
 const older = (dir) => readdirSync(dir).filter((f) => f.endsWith('.zip') && !f.includes(`-v${version}.zip`)).sort();
 
 writeFileSync('submission/README.md', `# ${NAME} — CrazyGames submission
@@ -102,17 +100,5 @@ ${TAGS.join(', ')}
 
 ## Category
 Simulation
-`);
-writeFileSync('submission-web/README.md', `# ${NAME} — web build
-
-- **Build:** \`fix-it-garage-web-v${version}.zip\` (\`npm run build:web\`): the plain web build, no ads and no portal SDK,
-  \`index.html\` at the root, relative paths only. Upload the zip's contents to any static host (it is what GitHub Pages serves).
-- **Older versions** (kept): ${older('submission-web').map((z) => `\`${z}\``).join(', ') || 'none'}.
-
-## Description
-${DESCRIPTION}
-
-## How to play
-${HOW_TO_PLAY}
 `);
 console.log('READMEs written');
