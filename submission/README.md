@@ -13,12 +13,12 @@ Tap a tool to find clues: each one costs workshop time. Green clues are normal, 
 simulation, car, mechanic, repair, garage, puzzle, casual, 3d, family, kids, mobile, html5
 
 ## Files
-- `fix-it-garage-crazygames-v1.1.0.zip` — the CrazyGames build (`npm run build`), `index.html` at the root, relative paths only.
+- `fix-it-garage-crazygames-v1.1.1.zip` — the CrazyGames build (`npm run build`), `index.html` at the root, relative paths only.
   Uses the CrazyGames SDK v3: gameplayStart/Stop, loadingStart/Stop, happytime, midgame ads only between jobs
   (at most one per 2 minutes, never during a repair), rewarded ads only from buttons the player taps (hint, free spare
   part, double payment), granted only when the ad completed; 8 s timeout, then "No ad available right now, try later"
   for 2.5 s. Language from the SDK locale (10 languages), saves in the SDK data module.
-- Older versions (kept for reference): `fix-it-garage-crazygames-v1.0.0.zip`.
+- Older versions (kept for reference): `fix-it-garage-crazygames-v1.0.0.zip`, `fix-it-garage-crazygames-v1.1.0.zip`.
 - `covers/cover-1920x1080.png`, `covers/cover-800x1200.png`, `covers/cover-800x800.png` — rendered from the real 3D title scene.
 - `videos/trailer-1920x1080.mp4`, `videos/trailer-1080x1920.mp4` — 18 s, no sound, recorded from real play.
 

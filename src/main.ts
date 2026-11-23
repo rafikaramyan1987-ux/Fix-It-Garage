@@ -110,8 +110,9 @@ async function boot() {
     },
   };
   if (params.get('view') === 'cover') document.getElementById('ui')!.classList.add('cover-mode');
-  // open-portal web, Playgama, GameMonetize and Y8 builds: the toolbar shrinks to fit narrow landscape frames (style.css `.fit-toolbar`)
-  if (__PLATFORM__ === 'web' || __PLATFORM__ === 'playgama' || __PLATFORM__ === 'gamemonetize' || __PLATFORM__ === 'y8') document.getElementById('ui')!.classList.add('fit-toolbar');
+  // every build: the toolbar shrinks (and wraps to two rows) to fit small landscape frames, e.g. GamePix's 800x450
+  // (style.css `.fit-toolbar`; checked by tests/e2e/layout.e2e.ts)
+  document.getElementById('ui')!.classList.add('fit-toolbar');
   void play.start(params.has('job') ? Number(params.get('job')) : null);
   tick(0);
   progress(1);
