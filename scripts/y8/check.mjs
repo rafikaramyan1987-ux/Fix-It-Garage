@@ -1,4 +1,4 @@
-// Static checks of a Y8 zip (scripts/y8/zip.mjs) and the media in submission-y8/media (docs.y8.com/studio/media).
+// Static checks of a Y8 zip (scripts/y8/zip.mjs) and the media in release/y8/media (docs.y8.com/studio/media).
 // Fails if
 //  - index.html is not at the zip root, or a path in the zip is absolute / leaves the zip,
 //  - index.html references a file by a non-relative path, or the bundle names another URL than Y8's CDN SDK,
@@ -6,8 +6,9 @@
 //    Game ID / `y8sdk.ready` / emitReadyEvent / the ad callbacks are missing,
 //  - another portal / ad network (crazygames, gamedistribution, gamepix, playgama, gamemonetize, googlesyndication,
 //    adBreak), an <iframe> or window.open is in the bundle,
-//  - a media file is missing, not the exact size, over its size limit (2 MB for 760x570, 5 MB for the rest, 50 MB for
-//    videos) or a video is not MP4 H.264, 1280x720 / 960x720, 20–30 s.
+//  - a media file in release/y8/media is missing, not the exact size, not PNG/JPG, over its size limit (2 MB for
+//    760x570, 5 MB for the rest, 50 MB for videos), a video is not MP4 H.264, 1280x720 / 960x720, 20–30 s, or the
+//    folder holds anything else; or the media zip release/y8/fix-it-garage-y8-media.zip differs from the folder.
 // Usage: node scripts/y8/check.mjs [zip] [--no-media]
 import { execFileSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, readdirSync, statSync } from 'node:fs';
@@ -70,14 +71,14 @@ for (const [needle, what] of [
 ]) check(!all.includes(needle), `${what} missing`, `${what} in the bundle`);
 
 if (!args.includes('--no-media')) {
-  const M = 'submission-y8/media';
+  const M = 'release/y8/media';
   const MB = 1024 * 1024;
   const imgs = [
-    ...[1, 2, 3, 4].map((i) => [`screenshot-760x570-${i}.jpg`, 760, 570, 2 * MB]),
-    ...[1, 2, 3, 4].map((i) => [`screenshot-1280x720-${i}.jpg`, 1280, 720, 5 * MB]),
-    ['promo-landscape-1920x1080.jpg', 1920, 1080, 5 * MB],
-    ['promo-portrait-1080x1920.jpg', 1080, 1920, 5 * MB],
-    ['promo-card-760x570.jpg', 760, 570, 2 * MB],
+    ...[1, 2, 3, 4, 5, 6].map((i) => [`standard-${i}.png`, 760, 570, 2 * MB]),
+    ...[1, 2, 3, 4, 5, 6].map((i) => [`widescreen-${i}.png`, 1280, 720, 5 * MB]),
+    ['promo-landscape.png', 1920, 1080, 5 * MB],
+    ['promo-portrait.png', 1080, 1920, 5 * MB],
+    ['promo-gamecard.png', 760, 570, 2 * MB],
   ];
   for (const [f, w, h, limit] of imgs) {
     const p = `${M}/${f}`;
@@ -87,8 +88,10 @@ if (!args.includes('--no-media')) {
     }
     const [iw, ih, fmt] = execFileSync('identify', ['-format', '%w %h %m', p], { encoding: 'utf8' }).trim().split(' ');
     const size = statSync(p).size;
-    check(+iw !== w || +ih !== h || fmt !== 'JPEG' || size >= limit, `${p}: ${iw}x${ih} ${fmt}, ${size} bytes (want ${w}x${h} JPEG < ${limit / MB} MB)`, `${p}: ${w}x${h} JPEG, ${(size / 1024).toFixed(0)} KB`);
+    check(+iw !== w || +ih !== h || !['PNG', 'JPEG'].includes(fmt) || size >= limit, `${p}: ${iw}x${ih} ${fmt}, ${size} bytes (want ${w}x${h} PNG/JPG < ${limit / MB} MB)`, `${p}: ${w}x${h} ${fmt}, ${(size / 1024).toFixed(0)} KB`);
   }
+  const extra = readdirSync(M).filter((f) => !f.startsWith('.') && !imgs.some(([n]) => n === f) && !/^gameplay-(1280|960)x720\.mp4$/.test(f));
+  check(extra.length, `unexpected files in ${M}: ${extra.join(', ')}`, `${M}: only the Y8 slots`);
   for (const [f, w, h] of [
     ['gameplay-1280x720.mp4', 1280, 720],
     ['gameplay-960x720.mp4', 960, 720],
@@ -104,6 +107,13 @@ if (!args.includes('--no-media')) {
     const size = statSync(p).size;
     const ok = v && v.codec_name === 'h264' && v.width === w && v.height === h && dur >= 20 && dur <= 30 && size < 50 * MB && /mp4/.test(probe.format.format_name);
     check(!ok, `${p}: ${v?.codec_name} ${v?.width}x${v?.height}, ${dur}s, ${size} bytes (want H.264 MP4 ${w}x${h}, 20–30 s, < 50 MB)`, `${p}: H.264 MP4 ${w}x${h}, ${dur.toFixed(1)} s, ${(size / MB).toFixed(1)} MB`);
+  }
+  // the media zip (scripts/release.mjs): exactly the files of release/y8/media, at the zip root
+  const mz = 'release/y8/fix-it-garage-y8-media.zip';
+  if (existsSync(mz)) {
+    const inZip = execFileSync('unzip', ['-Z1', mz], { encoding: 'utf8' }).split('\n').filter(Boolean).sort();
+    const want = readdirSync(M).filter((f) => !f.startsWith('.')).sort();
+    check(inZip.join() !== want.join(), `${mz} does not hold exactly ${M}/* (has ${inZip.join(', ')})`, `${mz}: the ${want.length} media files at the zip root`);
   }
 }
 

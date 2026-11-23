@@ -71,6 +71,22 @@ jobs:
       - run: npm run build:gamepix
       - run: npm run test:e2e
 
+  layout:
+    # every button of every overlay (top bar, bottom bar, readout, hint offer, parts, pause, leave-job, payment) fits the
+    # frame and none overlap: 14 sizes from 320x480 to 1920x1080 (800x450, 640x360, 568x320, 1024x576 …) x 10 languages
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: npm run build:gamepix
+      - run: npm run test:layout
+
   web:
     # open portals (itch.io, Newgrounds, Y8, Playgama): the ad-free web build as a zip with index.html at the root
     runs-on: ubuntu-latest

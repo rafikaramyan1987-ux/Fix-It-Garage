@@ -1,7 +1,7 @@
 {
   "name": "fix-it-garage",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.1.1",
   "type": "module",
   "description": "Fix It Garage - a cozy 3D car repair workshop game for the web",
   "scripts": {
@@ -20,6 +20,7 @@
     "test:e2e": "playwright test --trace off",
     "test:e2e:gamemonetize": "playwright test -c playwright.gamemonetize.config.ts --trace off",
     "test:e2e:y8": "playwright test -c playwright.y8.config.ts --trace off",
+    "test:layout": "playwright test -c playwright.layout.config.ts --trace off",
     "assets": "node scripts/assets.mjs",
     "validate:jobs": "tsx scripts/validate-jobs.ts",
     "check:i18n": "node scripts/check-i18n.mjs",
@@ -38,6 +39,7 @@
     "submission:y8": "npm run build:y8 && node scripts/y8/zip.mjs",
     "check:y8": "node scripts/y8/check.mjs",
     "media:y8": "tsx scripts/y8/media.ts",
+    "release": "node scripts/release.mjs",
     "covers": "tsx scripts/submission/covers.ts",
     "trailer": "tsx scripts/submission/trailer.ts",
     "preview:shots": "tsx scripts/preview-shots.ts",

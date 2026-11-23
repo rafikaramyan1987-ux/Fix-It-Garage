@@ -83,6 +83,10 @@ writeFileSync('submission-gamepix/README.md', `# ${NAME} — GamePix submission
   \`pause\`/\`resume\` events pause the game and its audio, \`soundOff\`/\`soundOn\` silence it. Interstitials only between
   jobs (at most one per 2 minutes), rewarded ads only from player taps, reward only on \`success: true\`.
   Language from \`GamePix.lang()\`.
+- **1.1.1 (resubmission):** fixes the review note "At 800×450, the 'Réparer' button of the bottom bar is cut off at the
+  right edge of the window". The bottom bar now shrinks to fit (and wraps to two rows below 720px wide), the ticket,
+  top bar, dialogs and payment card fit too: every button fully visible and tappable from 320x480 to 1920x1080 in all 10
+  languages, checked by \`npm run test:layout\` (800x450, 640x360, 568x320, 1024x576 and 10 more sizes).
 - **Older versions** (kept): ${older('submission-gamepix').map((z) => `\`${z}\``).join(', ') || 'none'}.
 - **Icon / cover:** \`icon-256x256.jpg\`, \`cover-1360x850.jpg\` (rendered from the real 3D title scene).
 

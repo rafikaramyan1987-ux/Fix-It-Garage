@@ -557,3 +557,89 @@ svg { display: block; }
   .fit-toolbar .kbtn { bottom: calc(128px + var(--safe-b)); }
   .fit-toolbar .kpanel { bottom: calc(178px + var(--safe-b)); }
 }
+
+/* ---- small frames: every button fits from 320x480 to 1920x1080 (GamePix 800x450, phones in landscape);
+   checked by tests/layout/layout.e2e.ts in every language ---- */
+/* bottom bar in a landscape frame up to 720px wide: the tools on one row, hint · repair · test on a second */
+@media (orientation: landscape) and (max-width: 720px) {
+  .fit-toolbar .toolbar { flex-direction: column; width: auto; gap: 5px; }
+  .fit-toolbar .toolbar .tools { flex: none; }
+  .fit-toolbar .tool { flex: 1 1 0; }
+  .fit-toolbar .toolbar .acts { flex: none; padding: 5px 0 0; border-left: 0; border-top: 2px solid var(--line); }
+  .fit-toolbar .act, .fit-toolbar .act.hint { flex: 1 1 0; width: auto; flex-direction: row; gap: 6px; min-height: 36px; padding: 3px 8px; }
+  .fit-toolbar .act .ic, .fit-toolbar .act.hint .ic { width: 24px; height: 24px; }
+  .fit-toolbar .act .nm { font-size: 13px; }
+  .fit-toolbar .act .cost { display: none; }
+  .fit-toolbar .act.hint .cost { display: block; }
+}
+/* the ticket stops above the bottom bar (it scrolls when the clues do not fit) */
+@media (orientation: landscape) {
+  .ticket { max-height: calc(100vh - 66px - 136px - var(--safe-t) - var(--safe-b)); overflow-y: auto; overscroll-behavior: contain; }
+}
+@media (orientation: landscape) and (max-width: 940px) { .ticket { max-height: calc(100vh - 66px - 104px - var(--safe-t) - var(--safe-b)); } }
+@media (orientation: landscape) and (max-width: 720px) { .ticket { max-height: calc(100vh - 66px - 146px - var(--safe-t) - var(--safe-b)); } }
+/* the keyboard-help corner button has no room in very small landscape frames (the keys still work) */
+@media (orientation: landscape) and (max-height: 420px), (orientation: landscape) and (max-width: 720px) {
+  .kbtn, .kpanel { display: none !important; }
+}
+/* top bar in narrow portrait frames (320-400px) */
+@media (max-width: 400px) {
+  .hud { left: 8px; right: 8px; gap: 6px; }
+  .pill { gap: 4px; padding: 0 10px 0 6px; font-size: 17px; }
+  .pill .ic { width: 24px; height: 24px; }
+  .pill.money .val { min-width: 0; }
+  .bonus { font-size: 11px; }
+}
+@media (max-width: 340px) {
+  .hud .iconbtn { width: 36px; height: 36px; }
+  .hud .iconbtn svg { width: 22px; height: 22px; }
+}
+/* main menu buttons in frames up to 360px wide: the longest labels (Reparaturbuch, Einstellungen) fit */
+@media (max-width: 360px) {
+  .menu-grid > .mbtn { min-width: 0; font-size: 15px; padding: 0 8px; gap: 6px; }
+  .menu-grid > .mbtn .mic { width: 24px; height: 24px; }
+  .menu-grid > .mbtn .fit { min-width: 0; overflow-wrap: anywhere; }
+}
+/* dialogs (hint offer, leave job, ad notice) in short landscape frames: wider, so the buttons share one row */
+@media (orientation: landscape) and (max-height: 420px) {
+  .dialog { width: min(560px, calc(100vw - 32px)); padding: 12px 16px; }
+  .dialog .adicon { width: 40px; height: 40px; }
+  .dialog p { font-size: 16px; margin: 2px 0 10px; }
+  .dialog .poor { margin-top: -6px; }
+  .dialog .btn { min-height: 46px; font-size: 17px; padding: 0 14px; }
+}
+/* payment card in short frames: tighter, and in landscape the buttons move to a second column */
+@media (orientation: landscape) and (max-height: 620px), (orientation: portrait) and (max-height: 700px) {
+  .paycard { padding: 14px 16px; border-radius: 22px; }
+  .paycard h2 { font-size: 24px; }
+  .paycard .thanks { font-size: 14px; margin: 0 0 4px; }
+  .paycard .stars { margin: 2px 0 6px; }
+  .paycard .stars svg { width: 40px; height: 40px; }
+  .paycard .lines { padding: 6px 12px; margin-bottom: 8px; }
+  .paycard .lines div { font-size: 15px; padding: 1px 0; }
+  .paycard .lines .tot { font-size: 18px; padding-top: 4px; }
+  .paycard .notes { font-size: 13px; margin: -2px 0 8px; }
+  .paycard .row { gap: 10px; }
+  .paycard .row .btn { min-height: 44px; font-size: 18px; }
+  .paycard .row .btn.big { min-height: 52px; font-size: 21px; }
+}
+@media (orientation: landscape) and (max-height: 620px) {
+  .paycard { width: min(680px, calc(100vw - 24px)); display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 0.85fr); column-gap: 16px; align-items: center; }
+  .paycard > * { grid-column: 1; }
+  .paycard .row { grid-column: 2; grid-row: 1 / span 6; align-self: center; }
+  .paycard .notes { margin: 0 0 4px; }
+}
+@media (orientation: landscape) and (max-height: 420px), (orientation: portrait) and (max-height: 520px) {
+  .paycard { padding: 10px 14px; }
+  .paycard h2 { font-size: 20px; }
+  .paycard .thanks { font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .paycard .stars { margin: 0 0 4px; }
+  .paycard .stars svg { width: 28px; height: 28px; }
+  .paycard .lines { padding: 4px 10px; margin-bottom: 4px; }
+  .paycard .lines div { font-size: 13px; padding: 0; }
+  .paycard .lines .tot { font-size: 15px; margin-top: 2px; padding-top: 2px; }
+  .paycard .notes { font-size: 12px; }
+  .paycard .row { gap: 8px; }
+  .paycard .row .btn { min-height: 40px; font-size: 16px; padding: 0 12px; }
+  .paycard .row .btn.big { min-height: 46px; font-size: 19px; }
+}

@@ -6,24 +6,33 @@
 
 ## Which file goes in which Y8 slot
 
-| Y8 Studio tab → slot | File (in `submission-y8/`) | Spec (checked by `scripts/y8/check.mjs` in CI) |
+Media resubmission (Y8 returned the Standard and 3 of 4 Widescreen screenshots, "Avoid: main menus, title screens,
+tutorials, loading or splash screens", and the promos, "Promo images should only have the game logo/title as texts and
+nothing more"; the gameplay video was approved and is unchanged). All media now live in `release/y8/media/` and in
+`release/y8/fix-it-garage-y8-media.zip` (`npm run release`).
+
+| Y8 Studio tab → slot | File | Spec (checked by `scripts/y8/check.mjs` in CI) |
 |---|---|---|
-| **Builds** → upload build | `fix-it-garage-y8-v1.zip` | `index.html` + `assets/` at the zip root, relative paths only |
-| **Media** → Standard Screenshot (4:3) ×4 | `media/screenshot-760x570-1.jpg`, `-2.jpg`, `-3.jpg`, `-4.jpg` | 760x570 JPG, < 2 MB |
-| **Media** → Widescreen Screenshot (16:9) ×4 | `media/screenshot-1280x720-1.jpg`, `-2.jpg`, `-3.jpg`, `-4.jpg` | 1280x720 JPG, < 5 MB |
-| **Media** → Landscape Promo | `media/promo-landscape-1920x1080.jpg` | 1920x1080 JPG, < 5 MB |
-| **Media** → Portrait Promo | `media/promo-portrait-1080x1920.jpg` | 1080x1920 JPG, < 5 MB |
-| **Media** → Game Card Promo | `media/promo-card-760x570.jpg` | 760x570 JPG, < 2 MB |
-| **Media** → Gameplay Video (16:9) | `media/gameplay-1280x720.mp4` | H.264 MP4 1280x720, 28 s, < 50 MB |
-| **Media** → Gameplay Video (4:3), if asked | `media/gameplay-960x720.mp4` | H.264 MP4 960x720, the same take, < 50 MB |
+| **Builds** → upload build | `submission-y8/fix-it-garage-y8-v1.zip` (copy: `release/y8/`) | `index.html` + `assets/` at the zip root, relative paths only |
+| **Media** → Standard Screenshot (4:3) ×6 | `release/y8/media/standard-1.png` … `standard-6.png` | 760x570 PNG, < 2 MB |
+| **Media** → Widescreen Screenshot (16:9) ×6 | `release/y8/media/widescreen-1.png` … `widescreen-6.png` | 1280x720 PNG, < 5 MB |
+| **Media** → Landscape Promo | `release/y8/media/promo-landscape.png` | 1920x1080 PNG, < 5 MB |
+| **Media** → Portrait Promo | `release/y8/media/promo-portrait.png` | 1080x1920 PNG, < 5 MB |
+| **Media** → Game Card Promo | `release/y8/media/promo-gamecard.png` | 760x570 PNG, < 2 MB |
+| **Media** → Gameplay Video (16:9) — approved, keep | `release/y8/media/gameplay-1280x720.mp4` | H.264 MP4 1280x720, 28 s, < 50 MB |
+| **Media** → Gameplay Video (4:3), if asked | `release/y8/media/gameplay-960x720.mp4` | H.264 MP4 960x720, the same take, < 50 MB |
 
-Screenshots (the same four moments at both sizes; all real gameplay, no menus or title screens):
-1. The battery tester on the terminals: the reading shows the fault (12.1 V, not charging)
-2. The car up on the lift: looking under finds a nail in a tyre
-3. The tyre change: unscrewing the wheel nuts in a star pattern
-4. Job done: 3 stars and the customer's payment
+Screenshots (the same six moments at both sizes; six career jobs, six cars; all mid-gameplay: no main menu, title
+screen, tutorial hint or arrow, loading screen, level select, popup or caption):
+1. Job 19, classic car: the battery tester clipped on the terminals
+2. Job 33, hatchback up on the lift: unbolting the leaking exhaust
+3. Job 21, pickup on the lift: the wheel nuts coming off in a star pattern
+4. Job 22, sports car: wheel off, the worn brake pads coming out
+5. Job 17, sedan: spraying fresh paint over the scratch
+6. Job 3, van: pouring oil into the engine
 
-Promos: the real 3D title scene with the game logo, rendered natively at 1920x1080, 1080x1920 and 760x570.
+Promos: the real 3D garage scene rendered natively at 1920x1080, 1080x1920 and 760x570, with the game logo
+"Fix It Garage" as the only text (no tagline, no buttons; the painted sign above the garage door is hidden).
 
 Video: one continuous recording of real play (career job 4, a sedan with a flat tyre), no cuts, no intro, no menus,
 no sound; the 33.9 s take is evenly sped up ×1.21 to fit Y8's 20–30 s. The car rolls in at once, the lift reveals the nail in the tyre, the tyre is ordered and the wheel nuts come
@@ -82,5 +91,6 @@ Landscape and portrait; the game fills any frame size (suggested 1280x720, 16:9)
 npm ci
 npm run submission:y8   # vite --mode y8 → dist-y8/ → fix-it-garage-y8-v1.zip + checks (zip and media)
 npm run test:e2e:y8     # Playwright smoke test of dist-y8 with a stubbed Y8 SDK
-npm run build:web && npx vite preview --outDir dist-web --port 4173 &  npm run media:y8   # screenshots, promos, videos
+npm run build:web && npx vite preview --outDir dist-web --port 4173 &  npm run media:y8   # screenshots + promos (--only video: the video)
+npm run release         # every portal zip + media zip into release/ (Y8: release/y8/)
 ```

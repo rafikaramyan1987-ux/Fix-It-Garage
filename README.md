@@ -43,6 +43,8 @@ npm run validate:jobs  # job validator (incl. Relaxed suspects top 3 + hint-only
 npm run check:i18n     # every language has every key
 npm run build:web && npm run build:gamepix && npm run test:e2e
 npm run submission && npm run submission:check
+npm run release        # every portal game zip + media zip into release/<portal>/ (scripts/release.mjs)
+npm run build:gamepix && npm run test:layout   # every button fits, none overlap: 14 sizes x 10 languages
 ```
 
 ## Layout
@@ -54,6 +56,8 @@ npm run submission && npm run submission:check
 - `src/ui/`: DOM overlay (HUD, ticket, toolbar, parts, payment) and screens (menu, settings, garage, book, daily, achievements)
 - `src/i18n/`: translations; `src/app/`: clock, audio (synthesised sounds + music), input, platform SDK wrappers
 - `scripts/`: asset pipeline, job validator, i18n check, capture driver, store art, trailers, submission zips
+- `release/`: what to upload, one folder per portal (game zip + media zip), written by `npm run release`;
+  `release/y8/media/`: the Y8 media slots
 - `submission/`, `submission-gd/`, `submission-gamepix/`, `submission-web/`: packages (older versions kept);
   `docs/`: previews and the jobs report
 
